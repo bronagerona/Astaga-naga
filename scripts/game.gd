@@ -385,7 +385,7 @@ func _float_text(pos: Vector2, text: String, color: Color) -> void:
 	particles.append({"pos": pos, "vel": Vector2(randf_range(-8, 8), -34), "life": 0.85, "max": 0.85, "color": color, "size": 13, "text": text})
 
 func _draw() -> void:
-	var camera := (player.pos - get_viewport_rect().size / 2.0).clamp(Vector2.ZERO, MAP_SIZE - get_viewport_rect().size)
+	var camera: Vector2 = (player.pos - get_viewport_rect().size / 2.0).clamp(Vector2.ZERO, MAP_SIZE - get_viewport_rect().size)
 	draw_set_transform(-camera)
 	_draw_world()
 	for d in drops:
@@ -410,7 +410,7 @@ func _draw_world() -> void:
 	for y in range(0, int(MAP_SIZE.y), 48):
 		for x in range(0, int(MAP_SIZE.x), 48):
 			var n := abs((x / 48 * 17 + y / 48 * 31) % 7)
-			var tint := base.lightened(0.04) if n == 0 else base.darkened(0.06) if n == 1 else base
+			var tint: Color = base.lightened(0.04) if n == 0 else base.darkened(0.06) if n == 1 else base
 			draw_rect(Rect2(x, y, 48, 48), tint)
 			if n == 2:
 				draw_rect(Rect2(x + 13, y + 16, 3, 3), Color("#c2d17a"))
