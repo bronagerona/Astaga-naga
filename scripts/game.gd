@@ -354,14 +354,14 @@ func _interact() -> void:
 		_toast("Tidak ada NPC dekat sini. Kembali ke Village setelah quest.")
 		return
 	_toast("Elder: Selamat datang! Shop: 25 gold = potion, 60 gold = upgrade senjata.")
-	if player.gold >= 25:
-		player.gold -= 25
-		player.potions += 1
-		_toast("Potion dibeli seharga 25 gold.")
-	elif player.gold >= 60:
+	if player.gold >= 60:
 		player.gold -= 60
 		player.weapon += 1
 		_toast("Senjata ditingkatkan!")
+	elif player.gold >= 25:
+		player.gold -= 25
+		player.potions += 1
+		_toast("Potion dibeli seharga 25 gold.")
 	else:
 		_toast("Elder: Kumpulkan gold dari monster untuk membeli item.")
 
@@ -453,9 +453,8 @@ func _draw_mob(m: Dictionary) -> void:
 		draw_string(ThemeDB.fallback_font, pos + Vector2(0, -float(m.radius) - 17), "ELITE", HORIZONTAL_ALIGNMENT_CENTER, -1, 10, Color("#ffcf75"))
 
 func draw_ellipse(pos: Vector2, radius: Vector2, color: Color) -> void:
-	draw_set_transform(pos)
-	draw_circle(Vector2.ZERO, maxf(radius.x, radius.y), color)
-	draw_set_transform(Vector2.ZERO)
+	# Keep the active world-camera transform intact; use a simple pixel-art shadow.
+	draw_circle(pos + Vector2(0, 4), maxf(radius.x, radius.y) * 0.72, color)
 
 func _draw_player() -> void:
 	var pos: Vector2 = player.pos
