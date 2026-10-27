@@ -52,6 +52,8 @@ jobs:
           echo "ANDROID SDK: $SDK_PATH"
       - name: Validate project scripts
         run: godot --headless --path . --editor --quit
+      - name: Prepare output directory
+        run: mkdir -p build
       - name: Export Android APK
         run: godot --headless --path . --export-debug "Android" build/astaga-naga.apk
       - name: Upload APK artifact
