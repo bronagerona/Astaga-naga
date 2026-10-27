@@ -139,6 +139,7 @@ function spawn(t,x,y){const b=MT[t],L=S.lv;E.push({t,e:b.e,x,y,hx:x,hy:y,r:b.r,h
 const K={};let jx=0,jy=0,atkHold=false,P={x:S.x,y:S.y,dir:0,face:1,ac:0,sc:0,inv:0,walk:0,sw:0};
 // Companion otomatis mengikuti Player dan memakai rumus stat Player yang sama.
 const C={x:S.x-22,y:S.y+18,dir:0,face:1,ac:0,walk:0};
+// ds() sudah memuat bonus class asli: Pemburu (cls===2) mendapat +12% speed dan +10% crit.
 function companionStats(){return ds()}
 addEventListener('keydown',e=>{K[e.key.toLowerCase()]=1;const k=e.key.toLowerCase();if(k==='k')skill();if(k==='l')potion();if(k==='e')interact();if(k==='i'||k==='tab'){e.preventDefault();menu()}});
 addEventListener('keyup',e=>{K[e.key.toLowerCase()]=0});
@@ -192,7 +193,7 @@ function interact(){if(paused)return;const n=near();if(!n)return;sfx.swing();
   else({kades,dagang,pelatih,tabib})[n.o.id]()}
 
 /* aksi tempur */
-function dmgE(e,d,crit){e.hp-=d;e.fl=.12;e.kx+=(e.x-P.x)/(Math.hypot(e.x-P.x,e.y-P.y)||1)*(e.boss?40:140);e.ky+=(e.y-P.y)/(Math.hypot(e.x-P.x,e.y-P.y)||1)*(e.boss?40:140);e.hit=1;
+function dmgE(e,d,crit,sourceX=P.x,sourceY=P.y){e.hp-=d;e.fl=.12;e.kx+=(e.x-sourceX)/(Math.hypot(e.x-sourceX,e.y-sourceY)||1)*(e.boss?40:140);e.ky+=(e.y-sourceY)/(Math.hypot(e.x-sourceX,e.y-sourceY)||1)*(e.boss?40:140);e.hit=1;
   FX.push({k:'num',x:e.x+RI(-6,6),y:e.y-14,t:0,s:String(Math.round(d)),c:crit?'#ffd24a':'#fff'});sfx.hit();if(e.hp<=0)kill(e)}
 function kill(e){E.splice(E.indexOf(e),1);const q=QD[S.qi];gainXp(Math.round(e.xp));
   for(let i=0;i<RI(1,3);i++)D.push({k:'g',x:e.x+RI(-12,12),y:e.y+RI(-12,12),v:Math.max(1,Math.round(e.g*RR(.7,1.4)*(e.boss?1:1))),t:0});
@@ -229,7 +230,7 @@ function update(dt){T0+=dt;const d=ds();
   const followX=P.x-Math.cos(P.dir||0)*24,followY=P.y-Math.sin(P.dir||0)*24+14;
   const cdx=followX-C.x,cdy=followY-C.y,cdist=Math.hypot(cdx,cdy);
   if(cdist>13){const cs=companionStats().spd;mv(C,cdx/cdist*Math.min(cdist-10,cs*dt),cdy/cdist*Math.min(cdist-10,cs*dt),7);C.walk+=dt*9;if(Math.abs(cdx)>.2)C.face=cdx>0?1:-1;C.dir=Math.atan2(cdy,cdx)}
-  if(C.ac<=0&&!paused){let target=null,dist=62;E.forEach(e=>{const rr=Math.hypot(e.x-C.x,e.y-C.y);if(rr<dist){dist=rr;target=e}});if(target){const cs=companionStats();C.ac=cs.acd;const crit=Math.random()<cs.crit;dmgE(target,cs.atk*RR(.85,1.15)*(crit?1.6:1),crit);FX.push({k:'sl',x:C.x,y:C.y,a:Math.atan2(target.y-C.y,target.x-C.x),t:0})}}
+  if(C.ac<=0&&!paused){let target=null,dist=62;E.forEach(e=>{const rr=Math.hypot(e.x-C.x,e.y-C.y);if(rr<dist){dist=rr;target=e}});if(target){const cs=companionStats();C.ac=cs.acd;const crit=Math.random()<cs.crit;dmgE(target,cs.atk*RR(.85,1.15)*(crit?1.6:1),crit,C.x,C.y);FX.push({k:'sl',x:C.x,y:C.y,a:Math.atan2(target.y-C.y,target.x-C.x),t:0})}}
   if(S.mp<d.maxmp)S.mp=Math.min(d.maxmp,S.mp+dt*(1.2+S.st.int*.15));
   if(S.hp<d.maxhp&&M.kind==='town')S.hp=Math.min(d.maxhp,S.hp+dt*4);
   E.forEach(e=>{e.cd-=dt;if(e.fl>0)e.fl-=dt;
