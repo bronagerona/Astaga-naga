@@ -24,7 +24,7 @@ jobs:
           java-version: '25'
 
       - name: Download Defold Bob
-        run: curl -fsSL https://d.defold.com/stable/bob/bob.jar -o bob.jar
+        run: curl -fsSL https://github.com/defold/defold/releases/download/1.14.0/bob.jar -o bob.jar
 
       - name: Prepare debug signing key
         run: |
