@@ -28,6 +28,7 @@ jobs:
 
       - name: Prepare debug signing key
         run: |
+          echo -n android > keystore.pass
           keytool -genkeypair -v \
             -keystore debug.keystore \
             -storepass android \
@@ -43,10 +44,10 @@ jobs:
             --platform armv7-android \
             --variant debug \
             --bundle-output ../build/android \
-            --bundle-format apk \
+            --bundle-format=apk \
             --keystore ../debug.keystore \
             --keystore-alias androiddebugkey \
-            --keystore-pass android \
+            --keystore-pass ../keystore.pass \
             --archive resolve distclean build bundle
 
       - name: List bundle output
