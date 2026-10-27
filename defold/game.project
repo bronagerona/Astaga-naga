@@ -3,7 +3,7 @@ title = Astaga-naga
 version = 0.1.0
 
 [bootstrap]
-main_collection = /main/main.collectionn
+main_collection = /main/main.collection/
 
 [display]
 width = 960
@@ -11,7 +11,7 @@ height = 540
 high_dpi = 1
 
 [input]
-game_binding = /input/game.input_binding 
+game_binding = /input/game.input_binding/
 
 [android]
 package = com.bronagerona.astaganaga
