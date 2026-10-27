@@ -12,4 +12,4 @@
 Open the repository's **Actions** tab and run **Build Defold Android APK**. If the run succeeds, download the `astaga-naga-defold-android-apk` artifact.
 
 ## Status
-This is an early playable prototype foundation, not the completed RPG. The 10 unique authored maps, village NPC/shop and quest progression, equipment inventory, save/load, boss fights, and polished pixel-art assets remain to be built and tested on an Android device. Do not treat the APK as verified until the workflow passes and the APK is tested on-device.
+The first Defold Android APK build completed successfully in GitHub Actions (run 18). The APK has not yet been tested on a physical Android device. This is an early playable prototype foundation, not the completed RPG. The 10 unique authored maps, village NPC/shop and quest progression, equipment inventory, save/load, boss fights, and polished pixel-art assets remain to be built and tested on an Android device. Do not treat the APK as verified until the workflow passes and the APK is tested on-device.
