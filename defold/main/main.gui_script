@@ -14,6 +14,8 @@ local function label(self, text, x, y, size, color)
     return node
 end
 
+local notice
+
 local function draw(self)
     for _, node in ipairs(self.nodes) do
         gui.delete_node(node)
@@ -54,7 +56,7 @@ local function draw(self)
     end
 end
 
-local function notice(self, text)
+notice = function(self, text)
     self.notice = text
     self.notice_timer = 1.6
 end
