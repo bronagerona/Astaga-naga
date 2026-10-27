@@ -3,7 +3,7 @@ title = Astaga-naga
 version = 0.1.0
 
 [bootstrap]
-main_collection = /main/main.collection
+main_collection = /main/main.collectionn
 
 [display]
 width = 960
