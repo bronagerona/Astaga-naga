@@ -1,0 +1,61 @@
+name: Build Defold Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'defold/**'
+      - '.github/workflows/defold-android.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java for Defold Bob
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Download Defold Bob
+        run: curl -fsSL https://d.defold.com/stable/bob/bob.jar -o bob.jar
+
+      - name: Prepare debug signing key
+        run: |
+          keytool -genkeypair -v \
+            -keystore debug.keystore \
+            -storepass android \
+            -alias androiddebugkey \
+            -keypass android \
+            -dname "CN=Android Debug,O=Android,C=US" \
+            -keyalg RSA -keysize 2048 -validity 10000
+
+      - name: Resolve, build, and bundle Android APK
+        working-directory: defold
+        run: |
+          java -jar ../bob.jar \
+            --platform armv7-android \
+            --variant debug \
+            --bundle-output ../build/android \
+            --bundle-format apk \
+            --keystore ../debug.keystore \
+            --keystore-alias androiddebugkey \
+            --keystore-pass android \
+            --archive resolve distclean build bundle
+
+      - name: List bundle output
+        if: always()
+        run: find build -maxdepth 4 -type f -print || true
+
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: astaga-naga-defold-android-apk
+          path: build/android/**/*.apk
+          if-no-files-found: error
