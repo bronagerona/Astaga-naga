@@ -1,24 +1,15 @@
-# Astaga-naga — Godot Action RPG
+# Astaga-naga — Offline 2D Action RPG
 
-Offline 2D top-down pixel-style Action RPG for Android, inspired by the movement, combat feel, monster reactions, drops, and readable HUD in `Pixel_RPG_World_Upgrade_Stable.html`.
+**Current engine target: Defold.** The active prototype and Android build workflow are in the `defold/` folder. The older Godot foundation is retained temporarily as a reference while the Defold APK build is verified.
 
-## Integrated foundation
-- Godot 4 project and procedural pixel-style world; no external art downloads are required.
-- Manual movement, sword attacks, attack arcs, hit particles, floating damage/EXP/gold text, enemy chase and respawn.
-- Active Arcane Pulse area skill with an 8-second cooldown.
-- HP, EXP, level-up stat growth, gold, potion use, elite monsters, and local save data.
-- Village starter area with an Elder/shop interaction.
-- Ten named maps with different environment palettes and kill-count quest gates.
-- Touch joystick, on-screen action buttons, and keyboard controls for desktop testing.
-- GitHub Actions workflow to validate the project and export an Android APK artifact.
-
-## Controls
-- Touch: joystick bottom-left; Potion, Skill, Attack bottom-right.
-- Desktop: WASD/arrow keys to move; Space/J to attack; K skill; P potion; E interact/shop; M map/quest; Save button to persist.
-- In the village, Talk / Shop interacts with the Elder. Map / Quest starts the first expedition and advances after the current map's kill target.
+## Defold prototype
+- Top-down, tile-like starter field with touch-to-move controls.
+- Attack, Arcane Pulse skill, potion, monster chase, HP, EXP, levels, and gold.
+- Initial elite-enemy and respawn loop.
+- GitHub Actions workflow intended to build a debug Android APK.
 
 ## Build Android
-Open the **Actions** tab and run **Build Godot Android APK**. On success, download the `astaga-naga-android-apk` artifact.
+Open the repository's **Actions** tab and run **Build Defold Android APK**. If the run succeeds, download the `astaga-naga-defold-android-apk` artifact.
 
-## Important status
-This is the first integrated code foundation, not yet a verified release. Android export and gameplay still need testing on-device. Equipment/shop depth, more distinct NPC/quest dialogue, boss encounter tuning, and production sprite assets remain follow-up improvements.
+## Status
+This is an early playable prototype foundation, not the completed RPG. The 10 unique authored maps, village NPC/shop and quest progression, equipment inventory, save/load, boss fights, and polished pixel-art assets remain to be built and tested on an Android device. Do not treat the APK as verified until the workflow passes and the APK is tested on-device.
