@@ -18,9 +18,39 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Prepare output directory
-        run: mkdir -p build
-      - name: Validate project
+      - name: Prepare Godot Android export templates
+        shell: bash
+        run: |
+          set -euxo pipefail
+          GODOT_VERSION="4.4.1"
+          TEMPLATE_DIR="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+          mkdir -p "$TEMPLATE_DIR" "$HOME/.android" "$HOME/.config/godot"
+          curl -fsSL "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_export_templates.tpz" -o /tmp/godot-templates.tpz
+          mkdir -p /tmp/godot-templates
+          unzip -q -o /tmp/godot-templates.tpz -d /tmp/godot-templates
+          cp /tmp/godot-templates/templates/* "$TEMPLATE_DIR/"
+          keytool -genkeypair -v -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey -keypass android -dname "CN=Android Debug,O=Android,C=US" -keyalg RSA -keysize 2048 -validity 10000
+          JAVA_PATH="$(dirname "$(dirname "$(readlink -f "$(command -v java)")")")"
+          SDK_PATH="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          if [ -z "$SDK_PATH" ] || [ ! -d "$SDK_PATH" ]; then
+            for candidate in /opt/android-sdk /opt/android-sdk-linux /usr/lib/android-sdk /root/.android/sdk /usr/local/lib/android/sdk; do
+              if [ -d "$candidate" ]; then SDK_PATH="$candidate"; break; fi
+            done
+          fi
+          if [ -z "$SDK_PATH" ] || [ ! -d "$SDK_PATH" ]; then
+            echo "Android SDK directory not found in CI image" >&2
+            find /opt /usr/local /root -maxdepth 4 -type d -name 'platform-tools' 2>/dev/null | head -20 || true
+            exit 1
+          fi
+          cat > "$HOME/.config/godot/editor_settings-4.tres" <<EOF
+          [gd_resource type="EditorSettings" format=3]
+          [resource]
+          export/android/java_sdk_path = "$JAVA_PATH"
+          export/android/android_sdk_path = "$SDK_PATH"
+          EOF
+          echo "JAVA SDK: $JAVA_PATH"
+          echo "ANDROID SDK: $SDK_PATH"
+      - name: Validate project scripts
         run: godot --headless --path . --editor --quit
       - name: Export Android APK
         run: godot --headless --path . --export-debug "Android" build/astaga-naga.apk
