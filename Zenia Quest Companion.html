@@ -76,7 +76,7 @@ const QD=[
  {t:'Taring Kelelawar',goal:3,type:'item',xp:180,gold:110,intro:'Tabib butuh taring kelelawar untuk obat. Bawakan 3 taring dari gua.',done:'Taring ini cukup untuk membuat obat. Terima kasih!'},
  {t:'Raja Goblin',goal:1,type:'boss',xp:700,gold:450,intro:'Dasar gua dihuni Raja Goblin yang menculik hasil panen kami. Kalahkan dia!',done:'Kamu mengalahkan Raja Goblin! Desa kita aman. Kamu pahlawan sejati!'},
  {t:'Ujian Penjaga Hutan',goal:10,type:'kill',xp:2500,gold:1800,intro:'Kamu sudah mencapai Level 100. Kalahkan 10 monster di Gua Goblin untuk membuktikan kekuatanmu. Setelah itu, jalan menuju Hutan Terlarang akan terbuka.',done:'Kekuatanmu diakui! Portal Hutan Terlarang kini terbuka di utara desa.'}];
-const DEF={lv:1,xp:0,pts:0,st:{str:5,vit:5,agi:5,int:5},hp:100,mp:40,gold:30,pot:3,eth:1,wpn:0,cls:0,qi:0,qs:0,qp:0,eq:{w:null,a:null,r:null},inv:[],snd:1,map:'town',x:13*TS+18,y:11*TS};
+const DEF={lv:1,xp:0,pts:0,st:{str:5,vit:5,agi:5,int:5},hp:100,mp:40,gold:30,pot:3,eth:1,wpn:0,cls:0,qi:0,qs:0,qp:0,raidNext:10,raidLevel:0,raidActive:false,raidClaim:false,raidDoneLevel:0,eq:{w:null,a:null,r:null},inv:[],snd:1,map:'town',x:13*TS+18,y:11*TS};
 let S=JSON.parse(JSON.stringify(DEF));
 try{const o=JSON.parse(localStorage.getItem(KEY)||'null');if(o&&o.st&&o.lv)S=Object.assign(S,o)}catch(e){}
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
@@ -155,11 +155,15 @@ function setMap(name,fromPortal){
     if(S.qi===2&&S.qs>=1){const r=rooms[rooms.length-1];spawn('boss',(r.x+r.w/2)*TS,(r.y+r.h/2)*TS)}
     M.cnt=E.filter(e=>!e.boss).length;
   }
+  if(name==='town'&&S.raidActive)spawnTownRaid();
   if(fromPortal){P.x=S.x;P.y=S.y;C.x=P.x-18;C.y=P.y+12;C.ac=0;C.walk=0}
   render();hudQ()}
 const mtypes=()=>M&&M.kind==='forest'?['wolf','treant','panther','shaman','thorn']:S.lv<3?['slime','bat','goblin','archer']:S.lv<6?['slime','bat','goblin','skel','archer','mage']:['slime','bat','goblin','skel','archer','mage'];
-function spawn(t,x,y){const b=MT[t],L=t==='boss'?S.lv+3:Math.max(1,S.lv+RI(-2,3)),h=b.hp*2.05*(1+.28*(L-1));
-  E.push({t,n:b.n,lv:L,e:b.e,x,y,r:b.r,hp:h,max:h,atk:b.atk*1.75*(1+.2*(L-1)),spd:b.spd*1.25,xp:b.xp*(1+.1*(L-1)),g:b.g,cd:RR(0,1),kx:0,ky:0,wt:0,wx:0,wy:0,boss:t==='boss',ranged:!!b.ranged,shot:RR(.7,1.8),tele:0,sw:5,fl:0})}
+function spawn(t,x,y,raid=false){const b=MT[t],L=t==='boss'?S.lv+3:Math.max(1,S.lv+RI(-2,3)),h=b.hp*2.05*(1+.28*(L-1));
+  E.push({t,n:b.n,lv:L,e:b.e,x,y,r:b.r,hp:h,max:h,atk:b.atk*1.75*(1+.2*(L-1)),spd:b.spd*1.25,xp:b.xp*(1+.1*(L-1)),g:b.g,cd:RR(0,1),kx:0,ky:0,wt:0,wx:0,wy:0,boss:t==='boss',raid,ranged:!!b.ranged,shot:RR(.7,1.8),tele:0,sw:5,fl:0})}
+function spawnTownRaid(){if(!S.raidActive||M.kind!=='town'||E.some(e=>e.raid))return;const types=['goblin','skel','archer','mage'];[[6.5,6.5],[10,5.5],[17,6.5],[20,9.5],[7,13.5],[18,14]].forEach(([x,y],i)=>spawn(types[i%types.length],x*TS,y*TS,true));spawn('boss',13.5*TS,8*TS,true);toast('🚨 Desa diserang! Kalahkan semua monster dan bos!')}
+function startTownRaid(){if(S.raidActive||S.raidClaim||S.lv<S.raidNext)return;S.raidLevel=S.raidNext;S.raidNext+=10;S.raidActive=true;toast('🚨 Quest otomatis: Selamatkan Desa!');if(M&&M.kind==='town')spawnTownRaid();save();hudQ()}
+function finishTownRaid(){S.raidActive=false;S.raidClaim=true;S.raidDoneLevel=S.raidLevel;toast('🏆 Desa berhasil diselamatkan! Temui Kepala Desa untuk hadiah spesial.');save();hudQ()}
 function respawn(){if(M.kind==='forest'){for(let n=0;n<30;n++){const tx=RI(2,M.w-3),ty=RI(2,M.h-3),x=tx*TS+TS/2,y=ty*TS+TS/2;if(!solidAt(x,y)&&Math.hypot(x-P.x,y-P.y)>240){spawn(pk(mtypes()),x,y);return}}return}const rs=M.rooms.slice(1);for(let n=0;n<8;n++){const r=pk(rs),x=(r.x+RR(1,r.w-1))*TS,y=(r.y+RR(1,r.h-1))*TS;if(Math.hypot(x-P.x,y-P.y)>240){spawn(pk(mtypes()),x,y);return}}}
 
 /* input */
@@ -185,7 +189,7 @@ function say(n,t,ch){$('#dn').textContent=n;$('#dt').textContent=t;const c=$('#d
 function hudQ(){const q=QD[S.qi];$('#qt').textContent=!q?'🏆 Semua misi selesai':S.qs===0?'📜 Temui Kepala Desa':S.qs===2?'✅ Lapor ke Kepala Desa':'📜 '+q.t+': '+S.qp+'/'+q.goal}
 function hud(){const d=ds();$('#lv').textContent=S.lv;$('#cls').textContent=CLS[S.cls];$('#hp').style.width=(S.hp/d.maxhp*100)+'%';$('#hpt').textContent=Math.ceil(S.hp)+'/'+d.maxhp;$('#mp').style.width=(S.mp/d.maxmp*100)+'%';$('#xpb').style.width=(S.xp/need(S.lv)*100)+'%';$('#gold').textContent='🪙 '+S.gold;$('#npot').textContent=S.pot;$('#b-pot').style.opacity=S.pot?1:.4;$('#b-snd').textContent=S.snd?'🔊':'🔇'}
 function gainXp(n){S.xp+=n;let up=0;while(S.xp>=need(S.lv)){S.xp-=need(S.lv);S.lv++;S.pts+=3;up++}
-  if(up){const d=ds();S.hp=d.maxhp;S.mp=d.maxmp;sfx.lvl();toast('⭐ Naik ke Level '+S.lv+'! +'+up*3+' poin stat');FX.push({k:'ring',x:P.x,y:P.y,t:0,r:50,c:'#ffd75e'})}}
+  if(up){const d=ds();S.hp=d.maxhp;S.mp=d.maxmp;sfx.lvl();toast('⭐ Naik ke Level '+S.lv+'! +'+up*3+' poin stat');FX.push({k:'ring',x:P.x,y:P.y,t:0,r:50,c:'#ffd75e'});startTownRaid()}}
 function menu(){if(paused&&!$('#menu').classList.contains('on'))return;const o=$('#menu');if(o.classList.contains('on')){o.classList.remove('on');paused=false;return}paused=true;o.classList.add('on');mrender()}
 let rq=0;
 let mtab=0;
@@ -212,7 +216,8 @@ const $$=s=>[...document.querySelectorAll(s)];
 
 /* NPC & dialog */
 function kades(){const q=QD[S.qi];
-  if(!q){say('Kepala Desa','Desa kita aman berkat dirimu, pahlawan! Terima kasih.');return}
+  if(S.raidClaim){say('Kepala Desa','Kamu menyelamatkan desa dari serangan pada Level '+S.raidLevel+'! Terimalah hadiah spesial ini.',[{t:'Ambil hadiah spesial',f:()=>{S.raidClaim=false;S.gold+=Math.max(500,S.raidLevel*100);gainXp(S.raidLevel*80);const it={id:Date.now()+RI(0,99999),sl:'r',n:'Lambang Penjaga Desa',e:'🛡️',r:3,lv:S.raidLevel,s:{hp:S.raidLevel*12,def:S.raidLevel*3,atk:S.raidLevel*2,crit:5},v:S.raidLevel*250};if(S.inv.length<24)S.inv.push(it);else D.push({k:'i',x:NP.find(n=>n.id==='kades').x,y:NP.find(n=>n.id==='kades').y,t:0,it});sfx.lvl();save();hud();hudQ();toast('🎁 Hadiah spesial: Lambang Penjaga Desa!');startTownRaid()}},{t:'Nanti',g:1}]);return}
+  if(!q){say('Kepala Desa','Desa kita aman berkat dirimu, pahlawan! Terima kasih!');return}
   if(S.qi===3&&S.lv<100){say('Kepala Desa','Ujian Penjaga Hutan baru tersedia setelah kamu mencapai Level 100. Levelmu sekarang '+S.lv+'.');return}
   if(S.qs===0)say('Kepala Desa',q.intro,[{t:'Terima misi',f:()=>{S.qs=1;S.qp=0;toast('Misi: '+q.t);hudQ();if(M.kind==='dungeon')setMap('dungeon')}},{t:'Nanti',g:1}]);
   else if(S.qs===1)say('Kepala Desa','Misi "'+q.t+'" belum selesai ('+S.qp+'/'+q.goal+'). Semangat!');
@@ -238,7 +243,7 @@ function kill(e){E.splice(E.indexOf(e),1);const q=QD[S.qi];gainXp(Math.round(e.x
   if(Math.random()<.18)D.push({k:'p',x:e.x,y:e.y,t:0});
   if(e.boss){for(let i=0;i<2;i++)D.push({k:'i',x:e.x+RI(-20,20),y:e.y+RI(-20,20),t:0,it:genItem(e.lv,2)})}else if(Math.random()<.22)D.push({k:'i',x:e.x,y:e.y,t:0,it:genItem(e.lv,0)});
   if(q&&S.qs===1){if(q.type==='kill'){S.qp++}else if(q.type==='boss'&&e.boss){S.qp=1}else if(q.type==='item'&&e.t==='bat'&&Math.random()<.75){D.push({k:'t',x:e.x,y:e.y,t:0})}
-    chkQ()}}
+    chkQ()}if(e.raid&&!E.some(x=>x.raid))finishTownRaid()}
 function chkQ(){const q=QD[S.qi];if(q&&S.qs===1){if(S.qp>=q.goal){S.qp=q.goal;S.qs=2;toast('✅ Misi selesai! Lapor ke Kepala Desa')}hudQ()}}
 function attack(){const d=ds();if(P.ac>0||paused)return;const rg=S.cls===2?190:64;let tg=null,bd=rg;E.forEach(e=>{const m=Math.hypot(e.x-P.x,e.y-P.y);if(m<bd){bd=m;tg=e}});
   if(tg){P.dir=Math.atan2(tg.y-P.y,tg.x-P.x)}P.ac=d.acd*(S.cls===2?1.1:1);P.sw=.18;sfx.swing();
@@ -309,6 +314,7 @@ function draw(){cx.setTransform(DPR,0,0,DPR,0,0);cx.fillStyle='#0c0f1f';cx.fillR
   cx.scale(Z,Z);cx.translate(-camx,-camy);cx.drawImage(M.cv,0,0);
   cx.textAlign='center';cx.textBaseline='middle';const F=s=>cx.font=s+'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",serif';
   PT.forEach(p=>{F(TS*1.1);cx.save();cx.translate(p.x,p.y);cx.rotate(T0*1.5);cx.fillText('🌀',0,0);cx.restore()});
+  if(M.kind==='town'&&S.raidActive){cx.save();cx.globalAlpha=.2+.12*Math.sin(T0*5);cx.fillStyle='#ff3b16';cx.fillRect(0,0,M.w*TS,M.h*TS);cx.globalAlpha=1;F(TS*1.15);(M.houses||[]).forEach(h=>{cx.fillText('🔥',h[0]*TS+TS,h[1]*TS+TS-13);cx.fillText('🔥',h[0]*TS+TS+12,h[1]*TS+TS+5)});cx.restore()}
   const L=[];NP.forEach(n=>L.push({y:n.y,f:()=>{sh(n.x,n.y,11);F(TS*.9);cx.fillText(n.e,n.x,n.y-4);F(11);cx.fillStyle='#fff';cx.strokeStyle='#000';cx.lineWidth=3;cx.strokeText(n.n,n.x,n.y-26);cx.fillText(n.n,n.x,n.y-26)}}));
   E.forEach(e=>L.push({y:e.y,f:()=>{sh(e.x,e.y,e.r);F(e.r*2.3);cx.globalAlpha=e.fl>0?.5:1;cx.fillText(e.e,e.x,e.y-3);cx.globalAlpha=1;
     if(e.tele>0){cx.strokeStyle='rgba(255,60,60,'+(.4+.4*Math.sin(T0*30))+')';cx.lineWidth=3;cx.beginPath();cx.arc(e.x,e.y,96,0,6.28);cx.stroke()}
