@@ -247,7 +247,7 @@ const cv=$('#cv'),cx=cv.getContext('2d');let W=0,H=0,Z=2,DPR=1,last=performance.
 function resize(){DPR=Math.min(2,devicePixelRatio||1);W=innerWidth;H=innerHeight;cv.width=W*DPR;cv.height=H*DPR;Z=Math.max(1.1,Math.min(W,H)/(TS*8.5))}
 addEventListener('resize',resize);resize();
 function update(dt){T0+=dt;const d=ds();
-  if(P.ac>0)P.ac-=dt;if(P.sc>0)P.sc-=dt;if(P.inv>0)P.inv-=dt;if(P.sw>0)P.sw-=dt;
+  if(P.ac>0)P.ac-=dt;if(C.ac>0)C.ac-=dt;if(P.sc>0)P.sc-=dt;if(P.inv>0)P.inv-=dt;if(P.sw>0)P.sw-=dt;
   let ax=jx+((K.d||K.arrowright)?1:0)-((K.a||K.arrowleft)?1:0),ay=jy+((K.s||K.arrowdown)?1:0)-((K.w||K.arrowup)?1:0);const m=Math.hypot(ax,ay);
   if(m>.05){const n=Math.min(1,m);ax=ax/m*n;ay=ay/m*n;mv(P,ax*d.spd*dt,ay*d.spd*dt,8);P.walk+=dt*10;P.dir=Math.atan2(ay,ax);if(Math.abs(ax)>.2)P.face=ax>0?1:-1}
   // Companion mengikuti Player dan otomatis menyerang monster di dekatnya.
