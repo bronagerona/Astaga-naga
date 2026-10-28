@@ -67,6 +67,8 @@ canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
 <div class="ov" id="dlg"><div class="box"><b id="dn"></b><p id="dt"></p><div class="ch" id="dc"></div></div></div>
 <div class="ov" id="menu"><div class="box" id="mb"></div></div>
 <script>
+window.__zeniaDiag=function(stage,detail){try{if(window.ReactNativeWebView&&window.ReactNativeWebView.postMessage)window.ReactNativeWebView.postMessage(JSON.stringify({type:'zenia_diag',stage:String(stage||'DIAG'),detail:String(detail||'').slice(0,220)}))}catch(e){}};
+window.__zeniaDiag('SCRIPT_START','Inline game script started');
 const $=s=>document.querySelector(s),RI=(a,b)=>a+Math.floor(Math.random()*(b-a+1)),RR=(a,b)=>a+Math.random()*(b-a),cl=(v,a,b)=>Math.max(a,Math.min(b,v)),pk=a=>a[Math.floor(Math.random()*a.length)];
 const TS=36,KEY='zeniaquest';
 let aiComment='',aiCommentUntil=0,aiLastRequest=0;
@@ -116,7 +118,7 @@ const SOL=t=>t===1||t===2;
 function solidAt(x,y){const tx=Math.floor(x/TS),ty=Math.floor(y/TS);if(tx<0||ty<0||tx>=M.w||ty>=M.h)return true;return SOL(M.g[ty*M.w+tx])}
 function hitW(x,y,r){return solidAt(x-r,y-r)||solidAt(x+r,y-r)||solidAt(x-r,y+r)||solidAt(x+r,y+r)}
 function mv(o,dx,dy,r){if(!hitW(o.x+dx,o.y,r))o.x+=dx;if(!hitW(o.x,o.y+dy,r))o.y+=dy}
-function render(){const c=document.createElement('canvas');c.width=M.w*TS;c.height=M.h*TS;const x=c.getContext('2d'),dg=M.kind==='dungeon',forest=M.kind==='forest';
+function render(){window.__zeniaDiag&&window.__zeniaDiag('MAP_RENDER_START',M&&M.kind||'unknown');const c=document.createElement('canvas');c.width=M.w*TS;c.height=M.h*TS;const x=c.getContext('2d'),dg=M.kind==='dungeon',forest=M.kind==='forest';
   for(let ty=0;ty<M.h;ty++)for(let tx=0;tx<M.w;tx++){const t=M.g[ty*M.w+tx];let col;
     if(dg)col=t===1?'#17142a':'#3b3558';else if(forest)col=t===1?'#163b28':'#356b3d';else col=t===3?'#cdb680':t===1?'#2f7a3a':t===2?'#4f9d52':'#58a85a';
     x.fillStyle=col;x.fillRect(tx*TS,ty*TS,TS,TS);
@@ -127,8 +129,9 @@ function render(){const c=document.createElement('canvas');c.width=M.w*TS;c.heig
   x.textAlign='center';x.textBaseline='middle';x.font=(TS*.95)+'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",serif';
   if(!dg)for(let ty=0;ty<M.h;ty++)for(let tx=0;tx<M.w;tx++){if(M.g[ty*M.w+tx]===1&&tx>0&&ty>0&&tx<M.w-1&&ty<M.h-1){x.font=(forest?TS*1.05:TS*.95)+'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",serif';x.fillText(forest?'🌲':'🌳',tx*TS+TS/2,ty*TS+TS/2);}}
   (M.houses||[]).forEach(h=>{x.font=(TS*1.9)+'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",serif';x.fillText('🏠',h[0]*TS+TS,h[1]*TS+TS)});
-  M.cv=c}
+  M.cv=c;window.__zeniaDiag&&window.__zeniaDiag('MAP_RENDER_OK',(M.kind||'unknown')+' '+c.width+'x'+c.height)}
 function setMap(name,fromPortal){
+  window.__zeniaDiag&&window.__zeniaDiag('MAP_INIT',String(name));
   E=[];D=[];FX=[];NP=[];PT=[];AR=[];HR=[];S.map=name;
   if(name==='town'){const w=26,h=18,g=new Array(w*h).fill(0);
     for(let y=0;y<h;y++)for(let x=0;x<w;x++){if(x===0||y===0||x===w-1||y===h-1)g[y*w+x]=1}
@@ -338,9 +341,11 @@ function draw(){cx.setTransform(DPR,0,0,DPR,0,0);cx.fillStyle='#0c0f1f';cx.fillR
     else{const p=f.t/.9;cx.globalAlpha=1-p;F(15);cx.fillStyle=f.c;cx.strokeStyle='#000';cx.lineWidth=3;cx.strokeText(f.s,f.x,f.y-p*22);cx.fillText(f.s,f.x,f.y-p*22);cx.globalAlpha=1}});
   if(M.kind==='dungeon'||M.kind==='forest'){cx.setTransform(DPR,0,0,DPR,0,0);const g=cx.createRadialGradient(W/2,H/2,Math.min(W,H)*.25,W/2,H/2,Math.max(W,H)*.75);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,M.kind==='forest'?'rgba(0,20,0,.4)':'rgba(0,0,10,.55)');cx.fillStyle=g;cx.fillRect(0,0,W,H)}}
 function sh(x,y,r){cx.fillStyle='rgba(0,0,0,.3)';cx.beginPath();cx.ellipse(x,y+r*.6,r*.9,r*.4,0,0,6.28);cx.fill()}
-function frame(ts){const dt=Math.min(.05,(ts-last)/1000);last=ts;if(!paused)update(dt);draw();requestAnimationFrame(frame)}
-try{if(!['town','dungeon','forest'].includes(S.map))S.map='town';setMap(S.map==='dungeon'?'town':S.map);P.x=Number.isFinite(S.x)?S.x:13*TS+18;P.y=Number.isFinite(S.y)?S.y:11*TS;if((S.map!=='town'&&S.map!=='dungeon'&&S.map!=='forest')||hitW(P.x,P.y,8)){S.map='town';setMap('town');P.x=13*TS+18;P.y=11*TS}startTownRaid()}catch(err){console.error('Map startup recovery:',err);S.map='town';S.x=13*TS+18;S.y=11*TS;P.x=S.x;P.y=S.y;setMap('town')}
-hud();hudQ();requestAnimationFrame(frame);
+let __zeniaFirstFrame=false;
+function frame(ts){if(!__zeniaFirstFrame){__zeniaFirstFrame=true;window.__zeniaDiag&&window.__zeniaDiag('FRAME_RUNNING','First animation frame')}const dt=Math.min(.05,(ts-last)/1000);last=ts;if(!paused)update(dt);draw();requestAnimationFrame(frame)}
+window.__zeniaDiag&&window.__zeniaDiag('STARTUP_BEGIN','Preparing initial map');
+try{if(!['town','dungeon','forest'].includes(S.map))S.map='town';setMap(S.map==='dungeon'?'town':S.map);P.x=Number.isFinite(S.x)?S.x:13*TS+18;P.y=Number.isFinite(S.y)?S.y:11*TS;if((S.map!=='town'&&S.map!=='dungeon'&&S.map!=='forest')||hitW(P.x,P.y,8)){S.map='town';setMap('town');P.x=13*TS+18;P.y=11*TS}startTownRaid();window.__zeniaDiag&&window.__zeniaDiag('STARTUP_MAP_OK',String(S.map))}catch(err){window.__zeniaDiag&&window.__zeniaDiag('STARTUP_ERROR',err&&err.stack||err);console.error('Map startup recovery:',err);S.map='town';S.x=13*TS+18;S.y=11*TS;P.x=S.x;P.y=S.y;setMap('town')}
+hud();hudQ();window.__zeniaDiag&&window.__zeniaDiag('STARTUP_UI_OK','HUD and quest initialized');requestAnimationFrame(frame);window.__zeniaDiag&&window.__zeniaDiag('FRAME_SCHEDULED','Animation frame requested');
 if(S.lv===1&&S.qi===0&&S.qs===0)setTimeout(()=>say('Selamat datang','Gerakkan joystick di kiri. Serangan dan Arrow Storm aktif otomatis saat monster berada dalam jangkauan. 🧪 untuk ramuan, 💬 untuk aksi. Companion 🐺 akan mengikuti dan membantumu menyerang monster. Temui Kepala Desa 👴 untuk misi pertama!'),400);
 </script>
 </body>

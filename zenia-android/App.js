@@ -95,7 +95,14 @@ export default function App() {
   async function onGameMessage(event){
     let msg;
     try{msg=JSON.parse(event.nativeEvent.data)}catch(_){return}
-    if(!msg||msg.type!=='zenia_comment_request')return;
+    if(!msg)return;
+    if(msg.type==='zenia_diag'){
+      const stage=String(msg.stage||'DIAG').slice(0,60);
+      const detail=String(msg.detail||'').replace(/[\\r\\n]+/g,' ').slice(0,150);
+      setStatus('Game diag · '+stage+(detail?' · '+detail:''));
+      return;
+    }
+    if(msg.type!=='zenia_comment_request')return;
     if(!ctxRef.current||inferenceRef.current)return;
     const now=Date.now();
     if(now-lastCommentAtRef.current<7000)return;
@@ -166,6 +173,12 @@ export default function App() {
         allowFileAccess
         originWhitelist={['*']}
         onMessage={onGameMessage}
+        onLoadStart={()=>setStatus('WebView · mulai memuat HTML game…')}
+        onLoadEnd={()=>setStatus('WebView · HTML termuat, menunggu diagnostik startup…')}
+        onError={e=>setStatus('WEBVIEW LOAD ERROR · '+String(e.nativeEvent&&e.nativeEvent.description||'gagal memuat halaman').slice(0,150))}
+        onHttpError={e=>setStatus('WEBVIEW HTTP ERROR · '+String(e.nativeEvent&&e.nativeEvent.statusCode||'unknown'))}
+        onRenderProcessGone={e=>setStatus('WEBVIEW PROCESS GONE · '+String(e.nativeEvent&&e.nativeEvent.didCrash?'crash':'proses berhenti'))}
+        injectedJavaScriptBeforeContentLoaded={`(function(){function report(stage,detail){try{window.ReactNativeWebView&&window.ReactNativeWebView.postMessage(JSON.stringify({type:'zenia_diag',stage:stage,detail:String(detail||'').slice(0,220)}));}catch(e){}}window.addEventListener('error',function(e){report('JS_ERROR',(e.message||'error')+' @ '+(e.filename||'')+':'+(e.lineno||0)+':'+(e.colno||0));});window.addEventListener('unhandledrejection',function(e){report('PROMISE_ERROR',e.reason&&e.reason.stack||e.reason||'unhandled rejection');});var old=console.error;console.error=function(){try{report('CONSOLE_ERROR',Array.prototype.join.call(arguments,' '));}catch(e){}if(old)old.apply(console,arguments);};report('JS_HOOK_READY','WebView error hook installed');})(); true;`}
       />:
       <View style={styles.loader}>
         {busy?<ActivityIndicator size="large" color="#a78bfa"/>:<Text style={styles.emoji}>🐺</Text>}
