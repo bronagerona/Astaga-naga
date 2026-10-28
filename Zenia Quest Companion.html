@@ -191,7 +191,7 @@ let zeniaBubbleText='', zeniaBubbleUntil=0, zeniaLastCommentAt=0, zeniaAmbientAt
 const ZeniaAI = (() => {
   let nextId = 1;
   const pending = new Map();
-  const clean = value => String(value == null ? '' : value).replace(/[\\r\\n]+/g, ' ').trim().slice(0, 150);
+  const clean = value => String(value == null ? '' : value).replace(/[\r\n]+/g, ' ').trim().slice(0, 150);
   function localComment(kind, extra) {
     const low = S.hp / Math.max(1, ds().maxhp);
     const enemy = extra && extra.enemy;
@@ -257,10 +257,10 @@ function drawZeniaBubble(camx,camy) {
   cx.setTransform(DPR,0,0,DPR,0,0);
   const font=12, padX=9, padY=7, maxW=Math.min(176,W-24);
   cx.font='700 '+font+'px "Baloo 2","Trebuchet MS",sans-serif';
-  const words=zeniaBubbleText.split(/\\s+/), lines=[]; let line='';
+  const words=zeniaBubbleText.split(/\s+/), lines=[]; let line='';
   for(const word of words){const test=line?line+' '+word:word;if(cx.measureText(test).width>maxW-padX*2&&line){lines.push(line);line=word}else line=test}
   if(line)lines.push(line);
-  while(lines.length>3){lines[2]=lines[2].replace(/\\s+\\S*$/,'…');lines.pop()}
+  while(lines.length>3){lines[2]=lines[2].replace(/\s+\S*$/,'…');lines.pop()}
   const width=Math.min(maxW,Math.max(58,...lines.map(t=>cx.measureText(t).width+padX*2)));
   const height=lines.length*(font+2)+padY*2;
   let x=sx+13, y=sy-height-9;
