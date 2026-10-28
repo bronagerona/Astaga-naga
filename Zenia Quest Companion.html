@@ -186,48 +186,92 @@ const jend=e=>{if(e.pointerId===jid){jid=null;jx=0;jy=0;knob.style.transform=''}
 $('#b-pot').onclick=()=>potion();$('#b-it').onclick=()=>interact();$('#b-st').onclick=()=>menu();
 $('#b-snd').onclick=()=>{S.snd=S.snd?0:1;$('#b-snd').textContent=S.snd?'🔊':'🔇';save()};
 
-/* Zenia local-AI bridge: Android WebView host supplies ZeniaNativeAI.requestComment(payloadJson). */
+/* Zenia companion bubble + optional Android local-AI bridge. */
+let zeniaBubbleText='', zeniaBubbleUntil=0, zeniaLastCommentAt=0, zeniaAmbientAt=0;
 const ZeniaAI = (() => {
-  let nextId = 1, lastRequestAt = 0;
+  let nextId = 1;
   const pending = new Map();
-  const clean = value => String(value == null ? '' : value).replace(/[\r\n]+/g, ' ').trim().slice(0, 220);
+  const clean = value => String(value == null ? '' : value).replace(/[\\r\\n]+/g, ' ').trim().slice(0, 150);
+  function localComment(kind, extra) {
+    const low = S.hp / Math.max(1, ds().maxhp);
+    const enemy = extra && extra.enemy;
+    if (kind === 'level_up') return ['YES! Naik level! Aku minta bonus camilan ya.','Level naik! Berarti aku makin keren, kan?','Wah, makin kuat. Musuh-musuh, pura-pura nggak lihat kita ya.'][RI(0,2)];
+    if (kind === 'boss_defeated') return ['Bos tumbang! Ada yang lihat aku tadi? Keren banget, kan?','Huft! Bosnya galak, tapi gaya kita lebih galak.','Kemenangan ini kupersembahkan untuk… daging panggang.'][RI(0,2)];
+    if (kind === 'enemy_defeated') return ['Satu lagi! Bersih-bersih dungeon sekalian, nih.','Musuhnya jatuh. Aku nggak mau sombong… tapi aku hebat.','Awas, lantainya licin. Eh, itu monster, bukan lantai.'][RI(0,2)];
+    if (kind === 'player_critical' || low < .3) return ['Eits, HP-mu tipis! Mundur dulu, aku belum siap jadi janda petualang.','Ramuan dulu, bos! Aku nggak bisa gendong kamu pulang.','Pelan-pelan! Nyawa bukan koin yang bisa dipungut lagi.'][RI(0,2)];
+    if (S.map === 'town') return ['Desa damai begini bikin aku pengin pensiun… selama 4 detik.','Menurutmu pedagang kasih diskon kalau aku pasang muka imut?','Aku curiga Kepala Desa sengaja bikin quest biar kita nggak gabut.','Kalau rumah-rumah ini punya dapur, aku tahu mau ke mana.','Aku jaga kamu. Kamu jaga camilanku. Sepakat?'][RI(0,4)];
+    if (S.map === 'forest') return ['Hutan ini seram. Kalau aku menggonggong, itu taktik, ya.','Semak-semak bergerak! …Oh, cuma daun. Aku tahu kok.','Kalau tersesat, kita bilang ini eksplorasi terencana.'][RI(0,2)];
+    if (enemy) return ['Musuh di dekat kita. Aku urus, kamu jangan panik.','Fokus battle! Habis ini baru kita cari camilan.','Aku sudah menggeram secara profesional.'][RI(0,2)];
+    return ['Dungeon gelap begini bikin buluku merinding.','Tetap dekat, ya. Aku kelihatan berani kalau kamu di sini.','Kalau ada loot bagus, kita bilang itu hasil kerja tim.'][RI(0,2)];
+  }
+  function context() {
+    let enemy = null, dist = Infinity;
+    E.forEach(e => { const d = Math.hypot(e.x-P.x,e.y-P.y); if(d<dist){dist=d;enemy=e;} });
+    let npc = null, npcDist = Infinity;
+    NP.forEach(n => { const d = Math.hypot(n.x-P.x,n.y-P.y); if(d<npcDist){npcDist=d;npc=n;} });
+    return {enemy:enemy&&dist<210?enemy.n:null, npc:npc&&npcDist<100?npc.n:null, note: npc&&npcDist<100 ? 'Dekat NPC '+npc.n : enemy&&dist<210 ? 'Battle dekat '+enemy.n : (S.map==='town'?'Sedang di desa':S.map==='forest'?'Menjelajah hutan':'Menjelajah dungeon')};
+  }
   function event(kind, extra) {
-    const host = window.ZeniaNativeAI;
-    if (!host || typeof host.requestComment !== 'function') return;
     const now = Date.now();
-    const urgent = kind === 'boss_defeated' || kind === 'level_up';
-    if (pending.size || (!urgent && now - lastRequestAt < 16000)) return;
-    lastRequestAt = now;
+    if (now - zeniaLastCommentAt < 10000) return;
+    zeniaLastCommentAt = now;
+    const ctx = Object.assign({}, context(), extra || {});
+    show(localComment(kind, ctx));
+    const host = window.ZeniaNativeAI;
+    if (!host || typeof host.requestComment !== 'function' || pending.size) return;
     const id = String(nextId++);
     const d = ds();
     const payload = {
       id, event: kind,
-      game: {
-        level: S.lv, map: S.map, hp: Math.round(S.hp), maxHp: d.maxhp,
-        mp: Math.round(S.mp), maxMp: d.maxmp, gold: S.gold,
-        quest: (QD[S.qi] && QD[S.qi].t) || 'Semua misi selesai',
-        questProgress: S.qp, questState: S.qs,
-        companion: 'Zenia', enemy: clean(extra && extra.enemy),
-        note: clean(extra && extra.note)
-      },
-      instruction: 'Beri satu komentar pendek dalam bahasa Indonesia sebagai companion game yang hangat dan spontan. Maksimal 18 kata. Jangan mengarang aksi yang tidak ada di konteks.'
+      game: { level:S.lv, map:S.map, hp:Math.round(S.hp), maxHp:d.maxhp,
+        mp:Math.round(S.mp), maxMp:d.maxmp, gold:S.gold,
+        quest:(QD[S.qi]&&QD[S.qi].t)||'Semua misi selesai',
+        questProgress:S.qp, questState:S.qs, companion:'Zenia',
+        enemy:clean(ctx.enemy), npc:clean(ctx.npc), note:clean(ctx.note) },
+      instruction:'Tulis SATU bubble komentar Zenia dalam bahasa Indonesia, lucu/natural, maksimal 8 kata. Relevan dengan konteks map, NPC, atau battle. Jangan mengarang aksi.'
     };
-    pending.set(id, true);
-    setTimeout(() => pending.delete(id), 90000);
-    try { host.requestComment(JSON.stringify(payload)); }
-    catch (err) { pending.delete(id); }
+    pending.set(id,true);
+    setTimeout(()=>pending.delete(id),90000);
+    try { host.requestComment(JSON.stringify(payload)); } catch(err) { pending.delete(id); }
   }
-  function receive(id, response) {
-    id = String(id);
-    if (!pending.has(id)) return;
+  function show(line) {
+    const text = clean(line);
+    if (!text) return;
+    zeniaBubbleText = text.slice(0,100);
+    zeniaBubbleUntil = T0 + 5.5;
+  }
+  function receive(id,response) {
+    id=String(id);
+    if(!pending.has(id)) return;
     pending.delete(id);
-    const line = clean(response);
-    if (!line) return;
-    if (typeof toast === 'function') toast('🐺 Zenia: ' + line.slice(0, 150));
+    const line=clean(response);
+    if(line) show(line);
   }
-  return { event, receive };
+  return {event,receive,show};
 })();
 window.ZeniaAI = ZeniaAI;
+function drawZeniaBubble(camx,camy) {
+  if(!zeniaBubbleText || T0>zeniaBubbleUntil) return;
+  const sx=(C.x-camx)*Z, sy=(C.y-camy)*Z-24;
+  if(sx<-30||sx>W+30||sy<-30||sy>H+50) return;
+  cx.setTransform(DPR,0,0,DPR,0,0);
+  const font=12, padX=9, padY=7, maxW=Math.min(176,W-24);
+  cx.font='700 '+font+'px "Baloo 2","Trebuchet MS",sans-serif';
+  const words=zeniaBubbleText.split(/\\s+/), lines=[]; let line='';
+  for(const word of words){const test=line?line+' '+word:word;if(cx.measureText(test).width>maxW-padX*2&&line){lines.push(line);line=word}else line=test}
+  if(line)lines.push(line);
+  while(lines.length>3){lines[2]=lines[2].replace(/\\s+\\S*$/,'…');lines.pop()}
+  const width=Math.min(maxW,Math.max(58,...lines.map(t=>cx.measureText(t).width+padX*2)));
+  const height=lines.length*(font+2)+padY*2;
+  let x=sx+13, y=sy-height-9;
+  if(x+width>W-8)x=sx-width-13;
+  x=cl(8,x,W-width-8); y=cl(8,y,H-height-8);
+  cx.save();cx.lineWidth=1.5;cx.strokeStyle='rgba(65,55,100,.85)';cx.fillStyle='rgba(255,255,255,.97)';
+  cx.beginPath();cx.moveTo(x+12,y);cx.lineTo(x+width-12,y);cx.quadraticCurveTo(x+width,y,x+width,y+12);cx.lineTo(x+width,y+height-12);cx.quadraticCurveTo(x+width,y+height,x+width-12,y+height);cx.lineTo(x+12,y+height);cx.quadraticCurveTo(x,y+height,x,y+height-12);cx.lineTo(x,y+12);cx.quadraticCurveTo(x,y,x+12,y);cx.closePath();cx.fill();cx.stroke();
+  cx.beginPath();const tailX=sx<x?x+width-17:x+17;cx.moveTo(tailX-4,y+height-1);cx.lineTo(tailX,y+height+7);cx.lineTo(tailX+5,y+height-1);cx.closePath();cx.fill();cx.stroke();
+  cx.fillStyle='#292342';cx.textAlign='center';cx.textBaseline='middle';lines.forEach((t,i)=>cx.fillText(t,x+width/2,y+padY+font/2+i*(font+2),maxW-padX*2));
+  cx.restore();
+}
 
 /* UI */
 let tt=0;function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>e.classList.remove('on'),2300)}
@@ -304,7 +348,7 @@ function die(){S.gold=Math.floor(S.gold*.9);const d=ds();S.hp=d.maxhp;S.mp=d.max
 const cv=$('#cv'),cx=cv.getContext('2d');let W=0,H=0,Z=2,DPR=1,last=performance.now();
 function resize(){DPR=Math.min(2,devicePixelRatio||1);W=innerWidth;H=innerHeight;cv.width=W*DPR;cv.height=H*DPR;Z=Math.max(1.1,Math.min(W,H)/(TS*8.5))}
 addEventListener('resize',resize);resize();
-function update(dt){T0+=dt;const d=ds();
+function update(dt){T0+=dt;const d=ds();if(T0-zeniaAmbientAt>=10){zeniaAmbientAt=T0;ZeniaAI.event('ambient',context())}
   if(P.ac>0)P.ac-=dt;if(C.ac>0)C.ac-=dt;if(P.sc>0)P.sc-=dt;if(P.storm>0){P.storm-=dt;P.stormFire-=dt}if(P.inv>0)P.inv-=dt;if(P.sw>0)P.sw-=dt;
   let ax=jx+((K.d||K.arrowright)?1:0)-((K.a||K.arrowleft)?1:0),ay=jy+((K.s||K.arrowdown)?1:0)-((K.w||K.arrowup)?1:0);const m=Math.hypot(ax,ay);
   if(m>.05){const n=Math.min(1,m);ax=ax/m*n;ay=ay/m*n;mv(P,ax*d.spd*dt,ay*d.spd*dt,8);P.walk+=dt*10;P.dir=Math.atan2(ay,ax);if(Math.abs(ax)>.2)P.face=ax>0?1:-1}
