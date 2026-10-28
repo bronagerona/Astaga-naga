@@ -98,6 +98,8 @@ class MainActivity : Activity() {
         } catch (_: Exception) { /* Some document providers do not offer persistable grants. */ }
         setStatus("Menyalin model ke cache lokal… jangan tutup aplikasi", false)
         worker.execute {
+            // Keep model loading below the WebView/UI scheduling priority.
+            try { android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND) } catch (_: Exception) {}
             modelReady = false
             try { nativeUnloadModel() } catch (_: Exception) {}
             modelFile?.delete()
@@ -156,6 +158,8 @@ class MainActivity : Activity() {
                 return
             }
             worker.execute {
+                // llama.cpp inference must not compete at foreground priority with the game loop.
+                try { android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND) } catch (_: Exception) {}
                 try {
                     val p = JSONObject(payloadJson)
                     val requestId = p.optString("id", "")
