@@ -186,6 +186,48 @@ const jend=e=>{if(e.pointerId===jid){jid=null;jx=0;jy=0;knob.style.transform=''}
 $('#b-pot').onclick=()=>potion();$('#b-it').onclick=()=>interact();$('#b-st').onclick=()=>menu();
 $('#b-snd').onclick=()=>{S.snd=S.snd?0:1;$('#b-snd').textContent=S.snd?'🔊':'🔇';save()};
 
+/* Zenia local-AI bridge: Android WebView host supplies ZeniaNativeAI.requestComment(payloadJson). */
+const ZeniaAI = (() => {
+  let nextId = 1, lastRequestAt = 0;
+  const pending = new Map();
+  const clean = value => String(value == null ? '' : value).replace(/[\\r\\n]+/g, ' ').trim().slice(0, 220);
+  function event(kind, extra) {
+    const host = window.ZeniaNativeAI;
+    if (!host || typeof host.requestComment !== 'function') return;
+    const now = Date.now();
+    const urgent = kind === 'boss_defeated' || kind === 'level_up';
+    if (pending.size || (!urgent && now - lastRequestAt < 16000)) return;
+    lastRequestAt = now;
+    const id = String(nextId++);
+    const d = ds();
+    const payload = {
+      id, event: kind,
+      game: {
+        level: S.lv, map: S.map, hp: Math.round(S.hp), maxHp: d.maxhp,
+        mp: Math.round(S.mp), maxMp: d.maxmp, gold: S.gold,
+        quest: (QD[S.qi] && QD[S.qi].t) || 'Semua misi selesai',
+        questProgress: S.qp, questState: S.qs,
+        companion: 'Zenia', enemy: clean(extra && extra.enemy),
+        note: clean(extra && extra.note)
+      },
+      instruction: 'Beri satu komentar pendek dalam bahasa Indonesia sebagai companion game yang hangat dan spontan. Maksimal 18 kata. Jangan mengarang aksi yang tidak ada di konteks.'
+    };
+    pending.set(id, true);
+    try { host.requestComment(JSON.stringify(payload)); }
+    catch (err) { pending.delete(id); }
+  }
+  function receive(id, response) {
+    id = String(id);
+    if (!pending.has(id)) return;
+    pending.delete(id);
+    const line = clean(response);
+    if (!line) return;
+    if (typeof toast === 'function') toast('🐺 Zenia: ' + line.slice(0, 150));
+  }
+  return { event, receive };
+})();
+window.ZeniaAI = ZeniaAI;
+
 /* UI */
 let tt=0;function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>e.classList.remove('on'),2300)}
 let paused=false;
@@ -193,7 +235,7 @@ function say(n,t,ch){$('#dn').textContent=n;$('#dt').textContent=t;const c=$('#d
 function hudQ(){const q=QD[S.qi];$('#qt').textContent=S.raidActive?'🚨 Selamatkan Desa (Lv '+S.raidLevel+'): kalahkan monster & bos':S.raidClaim?'🏆 Desa aman! Lapor ke Kepala Desa untuk hadiah spesial':!q?'🏆 Semua misi selesai':S.qs===0?'📜 Temui Kepala Desa':S.qs===2?'✅ Lapor ke Kepala Desa':'📜 '+q.t+': '+S.qp+'/'+q.goal}
 function hud(){const d=ds();$('#lv').textContent=S.lv;$('#cls').textContent=heroName();$('#hp').style.width=(S.hp/d.maxhp*100)+'%';$('#hpt').textContent=Math.ceil(S.hp)+'/'+d.maxhp;$('#mp').style.width=(S.mp/d.maxmp*100)+'%';$('#xpb').style.width=(S.xp/need(S.lv)*100)+'%';$('#gold').textContent='🪙 '+S.gold;$('#npot').textContent=S.pot;$('#b-pot').style.opacity=S.pot?1:.4;$('#b-snd').textContent=S.snd?'🔊':'🔇'}
 function gainXp(n){S.xp+=n;let up=0;while(S.xp>=need(S.lv)){S.xp-=need(S.lv);S.lv++;S.pts+=3;up++}
-  if(up){const d=ds();S.hp=d.maxhp;S.mp=d.maxmp;sfx.lvl();toast('⭐ Naik ke Level '+S.lv+'! +'+up*3+' poin stat');FX.push({k:'ring',x:P.x,y:P.y,t:0,r:50,c:'#ffd75e'});startTownRaid();if(S.lv>=100&&!S.element)chooseElement();save()}}
+  if(up){const d=ds();S.hp=d.maxhp;S.mp=d.maxmp;sfx.lvl();toast('⭐ Naik ke Level '+S.lv+'! +'+up*3+' poin stat');FX.push({k:'ring',x:P.x,y:P.y,t:0,r:50,c:'#ffd75e'});startTownRaid();if(S.lv>=100&&!S.element)chooseElement();save();ZeniaAI.event('level_up',{note:'Naik level ke '+S.lv})}}
 function menu(){if(paused&&!$('#menu').classList.contains('on'))return;const o=$('#menu');if(o.classList.contains('on')){o.classList.remove('on');paused=false;return}paused=true;o.classList.add('on');mrender()}
 let rq=0;
 let mtab=0;
@@ -245,14 +287,14 @@ function kill(e){E.splice(E.indexOf(e),1);const q=QD[S.qi];gainXp(Math.round(e.x
   if(Math.random()<.18)D.push({k:'p',x:e.x,y:e.y,t:0});
   if(e.boss){for(let i=0;i<2;i++)D.push({k:'i',x:e.x+RI(-20,20),y:e.y+RI(-20,20),t:0,it:genItem(e.lv,2)})}else if(Math.random()<.22)D.push({k:'i',x:e.x,y:e.y,t:0,it:genItem(e.lv,0)});
   if(q&&S.qs===1){if(q.type==='kill'){S.qp++}else if(q.type==='boss'&&e.boss){S.qp=1}else if(q.type==='item'&&e.t==='bat'&&Math.random()<.75){D.push({k:'t',x:e.x,y:e.y,t:0})}
-    chkQ()}if(e.raid&&!E.some(x=>x.raid))finishTownRaid()}
+    chkQ()}if(e.raid&&!E.some(x=>x.raid))finishTownRaid();ZeniaAI.event(e.boss?'boss_defeated':'enemy_defeated',{enemy:e.t||e.type||(e.boss?'Raja Goblin':'monster')})}
 function chkQ(){const q=QD[S.qi];if(q&&S.qs===1){if(S.qp>=q.goal){S.qp=q.goal;S.qs=2;toast('✅ Misi selesai! Lapor ke Kepala Desa')}hudQ()}}
 function attack(){const d=ds();if(P.ac>0||paused)return;let tg=null,bd=190;E.forEach(e=>{const m=Math.hypot(e.x-P.x,e.y-P.y);if(m<bd){bd=m;tg=e}});if(tg)P.dir=Math.atan2(tg.y-P.y,tg.x-P.x);P.ac=d.acd*1.1;P.sw=.18;sfx.swing();const cr=Math.random()<d.crit;AR.push({x:P.x,y:P.y,vx:Math.cos(P.dir)*d.bspd,vy:Math.sin(P.dir)*d.bspd,t:0,d:d.atk*RR(.85,1.15)*(cr?1.6:1),cr,elem:S.element})}
 function skill(target){if(paused||P.sc>0||!target)return;P.sc=9;P.storm=3;P.stormFire=0;sfx.skill();P.dir=Math.atan2(target.y-P.y,target.x-P.x);FX.push({k:'ring',x:P.x,y:P.y,t:0,r:70,c:'#8ed8ff'})}
 function potion(){if(paused)return;const d=ds();if(S.hp<d.maxhp&&S.pot>0){S.pot--;S.hp=Math.min(d.maxhp,S.hp+d.maxhp*.45);sfx.pick();FX.push({k:'num',x:P.x,y:P.y-18,t:0,s:'+HP',c:'#6dff9f'})}
   else if(S.mp<d.maxmp&&S.eth>0){S.eth--;S.mp=Math.min(d.maxmp,S.mp+d.maxmp*.5);sfx.pick();FX.push({k:'num',x:P.x,y:P.y-18,t:0,s:'+MP',c:'#7fc1ff'})}
   else toast('Tidak ada yang perlu dipulihkan')}
-function hurt(a,srcx,srcy){if(P.inv>0)return;const d=Math.max(1,Math.round(a*RR(.85,1.15)*100/(100+ds().def)));S.hp-=d;P.inv=.7;sfx.hurt();FX.push({k:'num',x:P.x,y:P.y-18,t:0,s:'-'+d,c:'#ff6d7a'});
+function hurt(a,srcx,srcy){if(P.inv>0)return;const d=Math.max(1,Math.round(a*RR(.85,1.15)*100/(100+ds().def)));S.hp-=d;P.inv=.7;if(S.hp>0&&S.hp/ds().maxhp<.3)ZeniaAI.event('player_critical',{note:'HP pemain rendah'});sfx.hurt();FX.push({k:'num',x:P.x,y:P.y-18,t:0,s:'-'+d,c:'#ff6d7a'});
   const m=Math.hypot(P.x-srcx,P.y-srcy)||1;mv(P,(P.x-srcx)/m*14,(P.y-srcy)/m*14,8);
   if(S.hp<=0){S.hp=0;die()}}
 function die(){S.gold=Math.floor(S.gold*.9);const d=ds();S.hp=d.maxhp;S.mp=d.maxmp;say('💀 Kamu pingsan','Warga desa membawamu pulang. Kamu kehilangan sedikit emas.',[{t:'Lanjut',f:()=>{setMap('town');P.x=13*TS+18;P.y=11*TS;hud()}}])}
