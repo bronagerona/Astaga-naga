@@ -10,22 +10,13 @@ This branch now contains the web-side contract plus an initial Android-native lo
 - A minimum 10-second interval is enforced and only one inference request is in flight at a time.
 - There are no canned/fallback companion lines. If the native bridge is absent, no AI bubble appears and gameplay continues normally without network requests.
 
-## Android loader prototype\n\nThe new `android-loader/` folder contains a minimal Android Studio project, a WebView wrapper that bundles the existing HTML, a local GGUF picker using Android's Storage Access Framework, and a JNI bridge linked to llama.cpp (pinned to `b4510`). The selected model is accessed through an open file descriptor rather than being copied into app storage. The Android manifest has no `INTERNET` permission. See `android-loader/README.md` for build instructions and prototype limitations.\n\n## Native Android bridge contract
+## Android loader prototype
 
-The Android WebView host must expose a JavaScript interface named `ZeniaNativeAI` with a method equivalent to:
+The new `android-loader/` folder contains a minimal Android Studio project, a WebView wrapper that bundles the updated game HTML, a **Muat AI lokal** control embedded in the game, a local GGUF picker using Android's Storage Access Framework, and a JNI bridge linked to llama.cpp (pinned to `b4510`). The selected model is accessed through an open file descriptor rather than being copied into app storage. The Android manifest has no `INTERNET` permission. See `android-loader/README.md` for build instructions and prototype limitations.
 
-```kotlin
-@JavascriptInterface
-fun requestComment(payloadJson: String)
-```
+## Native Android bridge
 
-Parse the JSON payload, pass its event/context to a **local** GGUF inference engine, then deliver the completed response back into the WebView:
-
-```javascript
-window.ZeniaAI.receive(requestId, generatedText)
-```
-
-For example, the native host can call `evaluateJavascript` with JSON-safe arguments. Do not concatenate raw model output into executable JavaScript; encode/quote values safely.
+The Android wrapper exposes `ZeniaNativeAI.pickModel()` for the in-game loader button and `ZeniaNativeAI.requestComment(payloadJson)` for contextual comments. After local inference, it calls `window.ZeniaAI.receive(requestId, generatedText)` using JSON-quoted arguments.
 
 ## Model/runtime requirements
 
@@ -33,8 +24,8 @@ For example, the native host can call `evaluateJavascript` with JSON-safe argume
 - Inference must stay on-device. Do not add the Android `INTERNET` permission.
 - Do not use `llama.rn`, Termux, or a cloud inference endpoint.
 - OfflineLLM v5.1.1 is a **technical reference only**. Its signed APK is not a runtime dependency and must not be repackaged.
-- Before choosing the native engine, verify that its GGUF tokenizer/chat-template path supports Gemma 3 1B. General GGUF loading alone does not prove template compatibility.
-- Keep model selection/import explicit. If copying a picked model into app-private storage is required by the engine, tell the user before copying because the GGUF may be large.
+- The pinned llama.cpp revision is intended to support Gemma 3 GGUF, and the prompt uses Gemma 3 turn markers. The exact Gemma 3 1B file still needs a successful on-device load and inference test.
+- Model selection is explicit. The current prototype does not automatically copy the selected GGUF; it keeps the selected file descriptor open while the model is loaded.
 
 ## Important status
 
