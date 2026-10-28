@@ -151,10 +151,16 @@ class MainActivity : Activity() {
 
         @JavascriptInterface
         fun requestComment(payloadJson: String) {
-            if (!modelReady) return
+            if (!modelReady) {
+                android.util.Log.w("ZeniaLocalAI", "Comment request ignored: model not ready")
+                return
+            }
             worker.execute {
                 try {
                     val p = JSONObject(payloadJson)
+                    val requestId = p.optString("id", "")
+                    runOnUiThread { setStatus("Zenia sedang memproses komentar lokal…", true) }
+                    android.util.Log.i("ZeniaLocalAI", "Comment request started id=$requestId")
                     val g = p.optJSONObject("game") ?: JSONObject()
                     val event = p.optString("event", "ambient")
                     val promptText = buildString {
@@ -186,10 +192,18 @@ class MainActivity : Activity() {
                         val id = p.optString("id", "")
                         val js = "window.ZeniaAI&&window.ZeniaAI.receive(" +
                             JSONObject.quote(id) + "," + JSONObject.quote(answer) + ");"
-                        runOnUiThread { web.evaluateJavascript(js, null) }
+                        runOnUiThread {
+                            web.evaluateJavascript(js, null)
+                            setStatus("Gemma aktif · komentar lokal terkirim", true)
+                        }
+                        android.util.Log.i("ZeniaLocalAI", "Comment response returned id=$id chars=${answer.length}")
+                    } else {
+                        runOnUiThread { setStatus("Gemma aktif · model belum memberi teks", true) }
+                        android.util.Log.w("ZeniaLocalAI", "Empty response id=$requestId")
                     }
                 } catch (e: Exception) {
                     android.util.Log.e("ZeniaLocalAI", "Comment inference failed", e)
+                    runOnUiThread { setStatus("Inference gagal: ${e.message ?: "lihat log Android"}", true) }
                 }
             }
         }
