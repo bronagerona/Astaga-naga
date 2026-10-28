@@ -7,9 +7,10 @@ set(LLAMA_BUILD_SERVER OFF CACHE BOOL "" FORCE)
 set(LLAMA_CURL OFF CACHE BOOL "" FORCE)
 set(GGML_NATIVE OFF CACHE BOOL "" FORCE)
 set(GGML_OPENMP OFF CACHE BOOL "" FORCE)
+set(GGML_LLAMAFILE ON CACHE BOOL "" FORCE)
 FetchContent_Declare(llama_cpp
     GIT_REPOSITORY https://github.com/ggerganov/llama.cpp.git
-    GIT_TAG b4510
+    GIT_TAG b10472
     GIT_SHALLOW TRUE)
 FetchContent_MakeAvailable(llama_cpp)
 add_library(zenia-llama SHARED native-lib.cpp)
