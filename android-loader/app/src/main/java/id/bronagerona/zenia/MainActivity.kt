@@ -72,7 +72,7 @@ class MainActivity : Activity() {
             setLayerType(View.LAYER_TYPE_HARDWARE, null)
         }
         root.addView(bar, LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
-        root.addView(web, LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f)
+        root.addView(web, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
         setContentView(root)
         web.loadUrl("file:///android_asset/Zenia%20Quest%20Companion.html")
     }
@@ -97,6 +97,10 @@ class MainActivity : Activity() {
         } catch (_: Exception) { /* Some document providers do not offer persistable grants. */ }
         setStatus("Membuka model lokal… jangan tutup aplikasi")
         worker.execute {
+            modelReady = false
+            try { nativeUnloadModel() } catch (_: Exception) {}
+            try { modelFd?.close() } catch (_: Exception) {}
+            modelFd = null
             var candidate: ParcelFileDescriptor? = null
             try {
                 candidate = contentResolver.openFileDescriptor(uri, "r")
