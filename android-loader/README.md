@@ -1,11 +1,11 @@
 # Zenia Local AI — Android loader prototype
 
-This Android wrapper is the first native loader for the existing **Zenia Quest Companion** game. It does not redesign gameplay. It packages the same HTML as an offline WebView asset and exposes `ZeniaNativeAI.requestComment(payloadJson)` to the game.
+This Android wrapper is the first native loader for the existing **Zenia Quest Companion** game. It does not redesign gameplay. The HTML itself now includes a **Muat AI lokal** control and status label, and the same updated HTML is bundled as an offline WebView asset. The wrapper exposes `ZeniaNativeAI.pickModel()` and `ZeniaNativeAI.requestComment(payloadJson)`.
 
 ## Current flow
 
 1. Build and install this Android project from Android Studio.
-2. Tap **Muat Gemma lokal** and select the Gemma 3 1B GGUF file already on the device.
+2. In the game, tap **🤖 Muat AI lokal** (or the loader button in the top bar) and select the Gemma 3 1B GGUF file already on the device.
 3. The app opens the selected document through Android's Storage Access Framework and keeps its file descriptor open. It does **not** download or copy the GGUF into app storage.
 4. llama.cpp loads the local file and generates a short Indonesian comment from the game event/context.
 5. The response is returned to `window.ZeniaAI.receive(id, text)`; the existing game code displays the companion bubble.
