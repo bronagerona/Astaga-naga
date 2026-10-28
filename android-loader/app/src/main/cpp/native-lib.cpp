@@ -38,10 +38,10 @@ Java_id_bronagerona_zenia_MainActivity_nativeLoadModel(JNIEnv *env, jobject, jst
         return env->NewStringUTF("Model gagal dibuka. Pilih file GGUF lokal yang bisa diakses langsung.");
     }
     llama_context_params cp = llama_context_default_params();
-    cp.n_ctx = 1024;
-    cp.n_batch = 512;
-    cp.n_threads = 4;
-    cp.n_threads_batch = 4;
+    cp.n_ctx = 768;
+    cp.n_batch = 128;
+    cp.n_threads = 2;
+    cp.n_threads_batch = 2;
     cp.n_outputs_max = 1;
     g_ctx = llama_init_from_model(g_model, cp);
     if (!g_ctx) {
@@ -77,7 +77,7 @@ Java_id_bronagerona_zenia_MainActivity_nativeGenerate(JNIEnv *env, jobject, jstr
     llama_sampler_chain_add(sampler, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
     std::string out;
     std::vector<char> piece(512);
-    for (int i = 0; i < 48; ++i) {
+    for (int i = 0; i < 16; ++i) {
         llama_token tok = llama_sampler_sample(sampler, g_ctx, -1);
         if (llama_vocab_is_eog(g_vocab, tok)) break;
         int32_t bytes = llama_token_to_piece(g_vocab, tok, piece.data(), (int32_t)piece.size(), 0, true);
