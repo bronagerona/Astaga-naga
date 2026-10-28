@@ -217,7 +217,6 @@ const ZeniaAI = (() => {
     if (now - zeniaLastCommentAt < 10000) return;
     zeniaLastCommentAt = now;
     const ctx = Object.assign({}, context(), extra || {});
-    show(localComment(kind, ctx));
     const host = window.ZeniaNativeAI;
     if (!host || typeof host.requestComment !== 'function' || pending.size) return;
     const id = String(nextId++);
