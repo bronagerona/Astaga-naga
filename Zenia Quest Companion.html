@@ -37,6 +37,9 @@ canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
 @keyframes pl{to{transform:scale(1.12)}}
 #toast{position:fixed;left:50%;top:calc(76px + env(safe-area-inset-top,0px));transform:translateX(-50%);background:rgba(0,0,0,.75);color:#fff;border-radius:99px;padding:5px 16px;font-weight:700;font-size:14px;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap;max-width:94vw;overflow:hidden;text-overflow:ellipsis}
 #toast.on{opacity:1}
+#aiLoader{position:fixed;top:calc(80px + env(safe-area-inset-top,0px));right:10px;z-index:8;display:flex;flex-direction:column;align-items:flex-end;gap:3px;max-width:180px;pointer-events:auto}
+#aiLoad{font:700 12px "Baloo 2","Trebuchet MS",sans-serif;border:1px solid rgba(255,255,255,.45);border-radius:99px;padding:5px 10px;background:rgba(31,36,72,.94);color:#fff;box-shadow:0 2px 7px #0005;cursor:pointer;touch-action:manipulation}
+#aiState{font-size:10px;color:#fff;text-shadow:0 1px 2px #000;background:rgba(0,0,0,.5);border-radius:8px;padding:2px 6px;max-width:100%;text-align:right}
 .ov{position:fixed;inset:0;display:none;align-items:flex-end;justify-content:center;background:rgba(5,8,25,.5);padding:12px;z-index:20}
 .ov.on{display:flex}
 #menu{align-items:center}
@@ -64,6 +67,7 @@ canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
 <div id="joy"><i id="knob"></i></div>
 <div id="btns"><button id="b-it" aria-label="Aksi">💬</button><button id="b-pot" aria-label="Ramuan">🧪<small id="npot">0</small></button></div>
 <div id="toast"></div>
+<div id="aiLoader"><button id="aiLoad" type="button">🤖 Muat AI lokal</button><span id="aiState">Gemma belum dimuat</span></div>
 <div class="ov" id="dlg"><div class="box"><b id="dn"></b><p id="dt"></p><div class="ch" id="dc"></div></div></div>
 <div class="ov" id="menu"><div class="box" id="mb"></div></div>
 <script>
@@ -186,6 +190,91 @@ const jend=e=>{if(e.pointerId===jid){jid=null;jx=0;jy=0;knob.style.transform=''}
 $('#b-pot').onclick=()=>potion();$('#b-it').onclick=()=>interact();$('#b-st').onclick=()=>menu();
 $('#b-snd').onclick=()=>{S.snd=S.snd?0:1;$('#b-snd').textContent=S.snd?'🔊':'🔇';save()};
 
+/* Zenia companion bubble + optional Android local-AI bridge. */
+let zeniaBubbleText='', zeniaBubbleUntil=0, zeniaLastCommentAt=0, zeniaAmbientAt=0;
+const ZeniaAI = (() => {
+  let nextId = 1;
+  const pending = new Map();
+  const clean = value => String(value == null ? '' : value).replace(/[\r\n]+/g, ' ').trim().slice(0, 150);
+  function context() {
+    let enemy = null, dist = Infinity;
+    E.forEach(e => { const d = Math.hypot(e.x-P.x,e.y-P.y); if(d<dist){dist=d;enemy=e;} });
+    let npc = null, npcDist = Infinity;
+    NP.forEach(n => { const d = Math.hypot(n.x-P.x,n.y-P.y); if(d<npcDist){npcDist=d;npc=n;} });
+    return {enemy:enemy&&dist<210?enemy.n:null, npc:npc&&npcDist<100?npc.n:null, note: npc&&npcDist<100 ? 'Dekat NPC '+npc.n : enemy&&dist<210 ? 'Battle dekat '+enemy.n : (S.map==='town'?'Sedang di desa':S.map==='forest'?'Menjelajah hutan':'Menjelajah dungeon')};
+  }
+  function event(kind, extra) {
+    const now = Date.now();
+    if (now - zeniaLastCommentAt < 30000) return;
+    zeniaLastCommentAt = now;
+    const ctx = Object.assign({}, context(), extra || {});
+    const host = window.ZeniaNativeAI;
+    if (!host || typeof host.requestComment !== 'function' || pending.size) return;
+    const id = String(nextId++);
+    const d = ds();
+    const payload = {
+      id, event: kind,
+      game: { level:S.lv, map:S.map, hp:Math.round(S.hp), maxHp:d.maxhp,
+        mp:Math.round(S.mp), maxMp:d.maxmp, gold:S.gold,
+        quest:(QD[S.qi]&&QD[S.qi].t)||'Semua misi selesai',
+        questProgress:S.qp, questState:S.qs, companion:'Zenia',
+        enemy:clean(ctx.enemy), npc:clean(ctx.npc), note:clean(ctx.note) },
+      instruction:'Tulis SATU bubble komentar Zenia dalam bahasa Indonesia, lucu/natural, maksimal 8 kata. Relevan dengan konteks map, NPC, atau battle. Jangan mengarang aksi.'
+    };
+    pending.set(id,true);
+    setTimeout(()=>pending.delete(id),90000);
+    try { host.requestComment(JSON.stringify(payload)); } catch(err) { pending.delete(id); }
+  }
+  function show(line) {
+    const text = clean(line);
+    if (!text) return;
+    zeniaBubbleText = text.slice(0,100);
+    zeniaBubbleUntil = T0 + 5.5;
+  }
+  function receive(id,response) {
+    id=String(id);
+    if(!pending.has(id)) return;
+    pending.delete(id);
+    const line=clean(response);
+    if(line) show(line);
+  }
+  return {event,receive,show};
+})();
+window.ZeniaAI = ZeniaAI;
+window.ZeniaAI.nativeStatus = function(message, ready) {
+  const state = document.getElementById('aiState');
+  const button = document.getElementById('aiLoad');
+  if (state) state.textContent = String(message || (ready ? 'Gemma siap · lokal' : 'Gemma belum dimuat'));
+  if (button) button.textContent = ready ? '✓ Gemma aktif' : '🤖 Muat AI lokal';
+};
+document.getElementById('aiLoad')?.addEventListener('click', () => {
+  const host = window.ZeniaNativeAI;
+  if (host && typeof host.pickModel === 'function') host.pickModel();
+  else window.ZeniaAI.nativeStatus('Buka game lewat aplikasi Zenia Local AI', false);
+});
+function drawZeniaBubble(camx,camy) {
+  if(!zeniaBubbleText || T0>zeniaBubbleUntil) return;
+  const sx=(C.x-camx)*Z, sy=(C.y-camy)*Z-24;
+  if(sx<-30||sx>W+30||sy<-30||sy>H+50) return;
+  cx.setTransform(DPR,0,0,DPR,0,0);
+  const font=12, padX=9, padY=7, maxW=Math.min(176,W-24);
+  cx.font='700 '+font+'px "Baloo 2","Trebuchet MS",sans-serif';
+  const words=zeniaBubbleText.split(/\s+/), lines=[]; let line='';
+  for(const word of words){const test=line?line+' '+word:word;if(cx.measureText(test).width>maxW-padX*2&&line){lines.push(line);line=word}else line=test}
+  if(line)lines.push(line);
+  while(lines.length>3){lines[2]=lines[2].replace(/\s+\S*$/,'…');lines.pop()}
+  const width=Math.min(maxW,Math.max(58,...lines.map(t=>cx.measureText(t).width+padX*2)));
+  const height=lines.length*(font+2)+padY*2;
+  let x=sx+13, y=sy-height-9;
+  if(x+width>W-8)x=sx-width-13;
+  x=cl(8,x,W-width-8); y=cl(8,y,H-height-8);
+  cx.save();cx.lineWidth=1.5;cx.strokeStyle='rgba(65,55,100,.85)';cx.fillStyle='rgba(255,255,255,.97)';
+  cx.beginPath();cx.moveTo(x+12,y);cx.lineTo(x+width-12,y);cx.quadraticCurveTo(x+width,y,x+width,y+12);cx.lineTo(x+width,y+height-12);cx.quadraticCurveTo(x+width,y+height,x+width-12,y+height);cx.lineTo(x+12,y+height);cx.quadraticCurveTo(x,y+height,x,y+height-12);cx.lineTo(x,y+12);cx.quadraticCurveTo(x,y,x+12,y);cx.closePath();cx.fill();cx.stroke();
+  cx.beginPath();const tailX=sx<x?x+width-17:x+17;cx.moveTo(tailX-4,y+height-1);cx.lineTo(tailX,y+height+7);cx.lineTo(tailX+5,y+height-1);cx.closePath();cx.fill();cx.stroke();
+  cx.fillStyle='#292342';cx.textAlign='center';cx.textBaseline='middle';lines.forEach((t,i)=>cx.fillText(t,x+width/2,y+padY+font/2+i*(font+2),maxW-padX*2));
+  cx.restore();
+}
+
 /* UI */
 let tt=0;function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>e.classList.remove('on'),2300)}
 let paused=false;
@@ -193,7 +282,7 @@ function say(n,t,ch){$('#dn').textContent=n;$('#dt').textContent=t;const c=$('#d
 function hudQ(){const q=QD[S.qi];$('#qt').textContent=S.raidActive?'🚨 Selamatkan Desa (Lv '+S.raidLevel+'): kalahkan monster & bos':S.raidClaim?'🏆 Desa aman! Lapor ke Kepala Desa untuk hadiah spesial':!q?'🏆 Semua misi selesai':S.qs===0?'📜 Temui Kepala Desa':S.qs===2?'✅ Lapor ke Kepala Desa':'📜 '+q.t+': '+S.qp+'/'+q.goal}
 function hud(){const d=ds();$('#lv').textContent=S.lv;$('#cls').textContent=heroName();$('#hp').style.width=(S.hp/d.maxhp*100)+'%';$('#hpt').textContent=Math.ceil(S.hp)+'/'+d.maxhp;$('#mp').style.width=(S.mp/d.maxmp*100)+'%';$('#xpb').style.width=(S.xp/need(S.lv)*100)+'%';$('#gold').textContent='🪙 '+S.gold;$('#npot').textContent=S.pot;$('#b-pot').style.opacity=S.pot?1:.4;$('#b-snd').textContent=S.snd?'🔊':'🔇'}
 function gainXp(n){S.xp+=n;let up=0;while(S.xp>=need(S.lv)){S.xp-=need(S.lv);S.lv++;S.pts+=3;up++}
-  if(up){const d=ds();S.hp=d.maxhp;S.mp=d.maxmp;sfx.lvl();toast('⭐ Naik ke Level '+S.lv+'! +'+up*3+' poin stat');FX.push({k:'ring',x:P.x,y:P.y,t:0,r:50,c:'#ffd75e'});startTownRaid();if(S.lv>=100&&!S.element)chooseElement();save()}}
+  if(up){const d=ds();S.hp=d.maxhp;S.mp=d.maxmp;sfx.lvl();toast('⭐ Naik ke Level '+S.lv+'! +'+up*3+' poin stat');FX.push({k:'ring',x:P.x,y:P.y,t:0,r:50,c:'#ffd75e'});startTownRaid();if(S.lv>=100&&!S.element)chooseElement();save();ZeniaAI.event('level_up',{note:'Naik level ke '+S.lv})}}
 function menu(){if(paused&&!$('#menu').classList.contains('on'))return;const o=$('#menu');if(o.classList.contains('on')){o.classList.remove('on');paused=false;return}paused=true;o.classList.add('on');mrender()}
 let rq=0;
 let mtab=0;
@@ -245,14 +334,14 @@ function kill(e){E.splice(E.indexOf(e),1);const q=QD[S.qi];gainXp(Math.round(e.x
   if(Math.random()<.18)D.push({k:'p',x:e.x,y:e.y,t:0});
   if(e.boss){for(let i=0;i<2;i++)D.push({k:'i',x:e.x+RI(-20,20),y:e.y+RI(-20,20),t:0,it:genItem(e.lv,2)})}else if(Math.random()<.22)D.push({k:'i',x:e.x,y:e.y,t:0,it:genItem(e.lv,0)});
   if(q&&S.qs===1){if(q.type==='kill'){S.qp++}else if(q.type==='boss'&&e.boss){S.qp=1}else if(q.type==='item'&&e.t==='bat'&&Math.random()<.75){D.push({k:'t',x:e.x,y:e.y,t:0})}
-    chkQ()}if(e.raid&&!E.some(x=>x.raid))finishTownRaid()}
+    chkQ()}if(e.raid&&!E.some(x=>x.raid))finishTownRaid();ZeniaAI.event(e.boss?'boss_defeated':'enemy_defeated',{enemy:e.t||e.type||(e.boss?'Raja Goblin':'monster')})}
 function chkQ(){const q=QD[S.qi];if(q&&S.qs===1){if(S.qp>=q.goal){S.qp=q.goal;S.qs=2;toast('✅ Misi selesai! Lapor ke Kepala Desa')}hudQ()}}
 function attack(){const d=ds();if(P.ac>0||paused)return;let tg=null,bd=190;E.forEach(e=>{const m=Math.hypot(e.x-P.x,e.y-P.y);if(m<bd){bd=m;tg=e}});if(tg)P.dir=Math.atan2(tg.y-P.y,tg.x-P.x);P.ac=d.acd*1.1;P.sw=.18;sfx.swing();const cr=Math.random()<d.crit;AR.push({x:P.x,y:P.y,vx:Math.cos(P.dir)*d.bspd,vy:Math.sin(P.dir)*d.bspd,t:0,d:d.atk*RR(.85,1.15)*(cr?1.6:1),cr,elem:S.element})}
 function skill(target){if(paused||P.sc>0||!target)return;P.sc=9;P.storm=3;P.stormFire=0;sfx.skill();P.dir=Math.atan2(target.y-P.y,target.x-P.x);FX.push({k:'ring',x:P.x,y:P.y,t:0,r:70,c:'#8ed8ff'})}
 function potion(){if(paused)return;const d=ds();if(S.hp<d.maxhp&&S.pot>0){S.pot--;S.hp=Math.min(d.maxhp,S.hp+d.maxhp*.45);sfx.pick();FX.push({k:'num',x:P.x,y:P.y-18,t:0,s:'+HP',c:'#6dff9f'})}
   else if(S.mp<d.maxmp&&S.eth>0){S.eth--;S.mp=Math.min(d.maxmp,S.mp+d.maxmp*.5);sfx.pick();FX.push({k:'num',x:P.x,y:P.y-18,t:0,s:'+MP',c:'#7fc1ff'})}
   else toast('Tidak ada yang perlu dipulihkan')}
-function hurt(a,srcx,srcy){if(P.inv>0)return;const d=Math.max(1,Math.round(a*RR(.85,1.15)*100/(100+ds().def)));S.hp-=d;P.inv=.7;sfx.hurt();FX.push({k:'num',x:P.x,y:P.y-18,t:0,s:'-'+d,c:'#ff6d7a'});
+function hurt(a,srcx,srcy){if(P.inv>0)return;const d=Math.max(1,Math.round(a*RR(.85,1.15)*100/(100+ds().def)));S.hp-=d;P.inv=.7;if(S.hp>0&&S.hp/ds().maxhp<.3)ZeniaAI.event('player_critical',{note:'HP pemain rendah'});sfx.hurt();FX.push({k:'num',x:P.x,y:P.y-18,t:0,s:'-'+d,c:'#ff6d7a'});
   const m=Math.hypot(P.x-srcx,P.y-srcy)||1;mv(P,(P.x-srcx)/m*14,(P.y-srcy)/m*14,8);
   if(S.hp<=0){S.hp=0;die()}}
 function die(){S.gold=Math.floor(S.gold*.9);const d=ds();S.hp=d.maxhp;S.mp=d.maxmp;say('💀 Kamu pingsan','Warga desa membawamu pulang. Kamu kehilangan sedikit emas.',[{t:'Lanjut',f:()=>{setMap('town');P.x=13*TS+18;P.y=11*TS;hud()}}])}
@@ -261,7 +350,7 @@ function die(){S.gold=Math.floor(S.gold*.9);const d=ds();S.hp=d.maxhp;S.mp=d.max
 const cv=$('#cv'),cx=cv.getContext('2d');let W=0,H=0,Z=2,DPR=1,last=performance.now();
 function resize(){DPR=Math.min(2,devicePixelRatio||1);W=innerWidth;H=innerHeight;cv.width=W*DPR;cv.height=H*DPR;Z=Math.max(1.1,Math.min(W,H)/(TS*8.5))}
 addEventListener('resize',resize);resize();
-function update(dt){T0+=dt;const d=ds();
+function update(dt){T0+=dt;const d=ds();if(T0-zeniaAmbientAt>=30){zeniaAmbientAt=T0;ZeniaAI.event('ambient',context())}
   if(P.ac>0)P.ac-=dt;if(C.ac>0)C.ac-=dt;if(P.sc>0)P.sc-=dt;if(P.storm>0){P.storm-=dt;P.stormFire-=dt}if(P.inv>0)P.inv-=dt;if(P.sw>0)P.sw-=dt;
   let ax=jx+((K.d||K.arrowright)?1:0)-((K.a||K.arrowleft)?1:0),ay=jy+((K.s||K.arrowdown)?1:0)-((K.w||K.arrowup)?1:0);const m=Math.hypot(ax,ay);
   if(m>.05){const n=Math.min(1,m);ax=ax/m*n;ay=ay/m*n;mv(P,ax*d.spd*dt,ay*d.spd*dt,8);P.walk+=dt*10;P.dir=Math.atan2(ay,ax);if(Math.abs(ax)>.2)P.face=ax>0?1:-1}
@@ -326,7 +415,7 @@ function draw(){cx.setTransform(DPR,0,0,DPR,0,0);cx.fillStyle='#0c0f1f';cx.fillR
   FX.forEach(f=>{if(f.k==='sl'){const p=f.t/.2;cx.strokeStyle='rgba(255,255,255,'+(1-p)+')';cx.lineWidth=5;cx.beginPath();cx.arc(f.x,f.y,34,f.a-1+p*.4,f.a+1+p*.4);cx.stroke()}
     else if(f.k==='ring'){const p=f.t/.4;cx.strokeStyle=f.c;cx.globalAlpha=1-p;cx.lineWidth=4;cx.beginPath();cx.arc(f.x,f.y,f.r*p,0,6.28);cx.stroke();cx.globalAlpha=1}
     else{const p=f.t/.9;cx.globalAlpha=1-p;F(15);cx.fillStyle=f.c;cx.strokeStyle='#000';cx.lineWidth=3;cx.strokeText(f.s,f.x,f.y-p*22);cx.fillText(f.s,f.x,f.y-p*22);cx.globalAlpha=1}});
-  if(M.kind==='dungeon'||M.kind==='forest'){cx.setTransform(DPR,0,0,DPR,0,0);const g=cx.createRadialGradient(W/2,H/2,Math.min(W,H)*.25,W/2,H/2,Math.max(W,H)*.75);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,M.kind==='forest'?'rgba(0,20,0,.4)':'rgba(0,0,10,.55)');cx.fillStyle=g;cx.fillRect(0,0,W,H)}}
+  if(M.kind==='dungeon'||M.kind==='forest'){cx.setTransform(DPR,0,0,DPR,0,0);const g=cx.createRadialGradient(W/2,H/2,Math.min(W,H)*.25,W/2,H/2,Math.max(W,H)*.75);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,M.kind==='forest'?'rgba(0,20,0,.4)':'rgba(0,0,10,.55)');cx.fillStyle=g;cx.fillRect(0,0,W,H)}drawZeniaBubble(camx,camy)}
 function sh(x,y,r){cx.fillStyle='rgba(0,0,0,.3)';cx.beginPath();cx.ellipse(x,y+r*.6,r*.9,r*.4,0,0,6.28);cx.fill()}
 function frame(ts){const dt=Math.min(.05,(ts-last)/1000);last=ts;if(!paused)update(dt);draw();requestAnimationFrame(frame)}
 try{if(!['town','dungeon','forest'].includes(S.map))S.map='town';setMap(S.map==='dungeon'?'town':S.map);P.x=Number.isFinite(S.x)?S.x:13*TS+18;P.y=Number.isFinite(S.y)?S.y:11*TS;if((S.map!=='town'&&S.map!=='dungeon'&&S.map!=='forest')||hitW(P.x,P.y,8)){S.map='town';setMap('town');P.x=13*TS+18;P.y=11*TS}startTownRaid()}catch(err){console.error('Map startup recovery:',err);S.map='town';S.x=13*TS+18;S.y=11*TS;P.x=S.x;P.y=S.y;setMap('town')}
