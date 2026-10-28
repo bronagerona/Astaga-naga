@@ -314,7 +314,7 @@ function draw(){cx.setTransform(DPR,0,0,DPR,0,0);cx.fillStyle='#0c0f1f';cx.fillR
   cx.scale(Z,Z);cx.translate(-camx,-camy);cx.drawImage(M.cv,0,0);
   cx.textAlign='center';cx.textBaseline='middle';const F=s=>cx.font=s+'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",serif';
   PT.forEach(p=>{F(TS*1.1);cx.save();cx.translate(p.x,p.y);cx.rotate(T0*1.5);cx.fillText('🌀',0,0);cx.restore()});
-  if(M.kind==='town'&&S.raidActive){cx.save();cx.globalAlpha=.2+.12*Math.sin(T0*5);cx.fillStyle='#ff3b16';cx.fillRect(0,0,M.w*TS,M.h*TS);cx.globalAlpha=1;F(TS*1.15);(M.houses||[]).forEach(h=>{cx.fillText('🔥',h[0]*TS+TS,h[1]*TS+TS-13);cx.fillText('🔥',h[0]*TS+TS+12,h[1]*TS+TS+5)});cx.restore()}
+  // Efek api dinonaktifkan sementara agar tidak mengganggu render map.
   const L=[];NP.forEach(n=>L.push({y:n.y,f:()=>{sh(n.x,n.y,11);F(TS*.9);cx.fillText(n.e,n.x,n.y-4);F(11);cx.fillStyle='#fff';cx.strokeStyle='#000';cx.lineWidth=3;cx.strokeText(n.n,n.x,n.y-26);cx.fillText(n.n,n.x,n.y-26)}}));
   E.forEach(e=>L.push({y:e.y,f:()=>{sh(e.x,e.y,e.r);F(e.r*2.3);cx.globalAlpha=e.fl>0?.5:1;cx.fillText(e.e,e.x,e.y-3);cx.globalAlpha=1;
     if(e.tele>0){cx.strokeStyle='rgba(255,60,60,'+(.4+.4*Math.sin(T0*30))+')';cx.lineWidth=3;cx.beginPath();cx.arc(e.x,e.y,96,0,6.28);cx.stroke()}
