@@ -186,7 +186,7 @@ $('#b-snd').onclick=()=>{S.snd=S.snd?0:1;$('#b-snd').textContent=S.snd?'🔊':'�
 let tt=0;function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>e.classList.remove('on'),2300)}
 let paused=false;
 function say(n,t,ch){$('#dn').textContent=n;$('#dt').textContent=t;const c=$('#dc');c.innerHTML='';(ch||[{t:'OK'}]).forEach(o=>{const b=document.createElement('button');b.className='bt'+(o.g?' g':'');b.textContent=o.t;if(o.d)b.disabled=true;b.onclick=()=>{$('#dlg').classList.remove('on');paused=false;if(o.f)o.f()};c.appendChild(b)});$('#dlg').classList.add('on');paused=true}
-function hudQ(){const q=QD[S.qi];$('#qt').textContent=!q?'🏆 Semua misi selesai':S.qs===0?'📜 Temui Kepala Desa':S.qs===2?'✅ Lapor ke Kepala Desa':'📜 '+q.t+': '+S.qp+'/'+q.goal}
+function hudQ(){const q=QD[S.qi];$('#qt').textContent=S.raidActive?'🚨 Selamatkan Desa (Lv '+S.raidLevel+'): kalahkan monster & bos':S.raidClaim?'🏆 Desa aman! Lapor ke Kepala Desa untuk hadiah spesial':!q?'🏆 Semua misi selesai':S.qs===0?'📜 Temui Kepala Desa':S.qs===2?'✅ Lapor ke Kepala Desa':'📜 '+q.t+': '+S.qp+'/'+q.goal}
 function hud(){const d=ds();$('#lv').textContent=S.lv;$('#cls').textContent=CLS[S.cls];$('#hp').style.width=(S.hp/d.maxhp*100)+'%';$('#hpt').textContent=Math.ceil(S.hp)+'/'+d.maxhp;$('#mp').style.width=(S.mp/d.maxmp*100)+'%';$('#xpb').style.width=(S.xp/need(S.lv)*100)+'%';$('#gold').textContent='🪙 '+S.gold;$('#npot').textContent=S.pot;$('#b-pot').style.opacity=S.pot?1:.4;$('#b-snd').textContent=S.snd?'🔊':'🔇'}
 function gainXp(n){S.xp+=n;let up=0;while(S.xp>=need(S.lv)){S.xp-=need(S.lv);S.lv++;S.pts+=3;up++}
   if(up){const d=ds();S.hp=d.maxhp;S.mp=d.maxmp;sfx.lvl();toast('⭐ Naik ke Level '+S.lv+'! +'+up*3+' poin stat');FX.push({k:'ring',x:P.x,y:P.y,t:0,r:50,c:'#ffd75e'});startTownRaid()}}
@@ -331,7 +331,7 @@ function draw(){cx.setTransform(DPR,0,0,DPR,0,0);cx.fillStyle='#0c0f1f';cx.fillR
   if(M.kind==='dungeon'||M.kind==='forest'){cx.setTransform(DPR,0,0,DPR,0,0);const g=cx.createRadialGradient(W/2,H/2,Math.min(W,H)*.25,W/2,H/2,Math.max(W,H)*.75);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,M.kind==='forest'?'rgba(0,20,0,.4)':'rgba(0,0,10,.55)');cx.fillStyle=g;cx.fillRect(0,0,W,H)}}
 function sh(x,y,r){cx.fillStyle='rgba(0,0,0,.3)';cx.beginPath();cx.ellipse(x,y+r*.6,r*.9,r*.4,0,0,6.28);cx.fill()}
 function frame(ts){const dt=Math.min(.05,(ts-last)/1000);last=ts;if(!paused)update(dt);draw();requestAnimationFrame(frame)}
-setMap(S.map==='dungeon'?'town':S.map);P.x=S.x;P.y=S.y;if((S.map!=='town'&&S.map!=='dungeon'&&S.map!=='forest')||hitW(P.x,P.y,8)){P.x=13*TS+18;P.y=11*TS}
+setMap(S.map==='dungeon'?'town':S.map);P.x=S.x;P.y=S.y;if((S.map!=='town'&&S.map!=='dungeon'&&S.map!=='forest')||hitW(P.x,P.y,8)){P.x=13*TS+18;P.y=11*TS}startTownRaid()
 hud();hudQ();requestAnimationFrame(frame);
 if(S.lv===1&&S.qi===0&&S.qs===0)setTimeout(()=>say('Selamat datang','Gerakkan joystick di kiri. Serangan dan Arrow Storm aktif otomatis saat monster berada dalam jangkauan. 🧪 untuk ramuan, 💬 untuk aksi. Companion 🐺 akan mengikuti dan membantumu menyerang monster. Temui Kepala Desa 👴 untuk misi pertama!'),400);
 </script>
