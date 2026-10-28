@@ -88,6 +88,7 @@ function eqs(){const t={atk:0,hp:0,def:0,crit:0,mp:0,spd:0};['w','a','r'].forEac
 function heroName(){return S.element==='fire'?'Pemanah Api':S.element==='ice'?'Pemanah Es':S.element==='poison'?'Pemanah Racun':'Pemanah'}
 function chooseElement(){if(S.lv<100||S.element)return;say('Pilih Spesialisasi Pemanah','Pilih satu elemen. Pilihan ini menjadi spesialisasimu.',[{t:'🔥 Pemanah Api',f:()=>{S.element='fire';sfx.lvl();toast('Spesialisasi: Pemanah Api!');save();hud()}},{t:'❄️ Pemanah Es',f:()=>{S.element='ice';sfx.lvl();toast('Spesialisasi: Pemanah Es!');save();hud()}},{t:'☠️ Pemanah Racun',f:()=>{S.element='poison';sfx.lvl();toast('Spesialisasi: Pemanah Racun!');save();hud()}}])}
 function ds(){const s=S.st,q=eqs();return{maxhp:Math.round(100+S.lv*5)+q.hp,maxmp:Math.round(20+s.int*5)+q.mp,atk:Math.round(4+s.str*2+S.wpn*4)+q.atk,def:s.def*2+q.def,spd:80+q.spd,bspd:370+s.bspd*12,acd:.55,crit:.05+q.crit/100,skl:1}}
+S.hp=Math.min(Number.isFinite(S.hp)?S.hp:ds().maxhp,ds().maxhp);S.mp=Math.min(Number.isFinite(S.mp)?S.mp:ds().maxmp,ds().maxmp);
 function genItem(lv,minR){const sl=pk(['w','a','r']),ro=Math.random();let r=ro<.02?3:ro<.12?2:ro<.4?1:0;r=Math.max(r,minR||0);const m=RM[r],b=pk(IB[sl]),st={};
   if(sl==='w'){st.atk=Math.round((3+lv*1.6)*m);if(r>=2)st.crit=Math.round(2*m)}
   else if(sl==='a'){st.hp=Math.round((12+lv*5)*m);st.def=Math.round((2+lv*.9)*m)}
