@@ -291,7 +291,7 @@ function update(dt){T0+=dt;const d=ds();
   if(S.mp<d.maxmp)S.mp=Math.min(d.maxmp,S.mp+dt*(1.2+S.st.int*.15));
   if(S.hp<d.maxhp&&M.kind==='town')S.hp=Math.min(d.maxhp,S.hp+dt*4);
   E.forEach(e=>{e.cd-=dt;if(e.fl>0)e.fl-=dt;
-    e.x+=e.kx*dt;e.y+=e.ky*dt;e.kx*=.85;e.ky*=.85;
+    mv(e,e.kx*dt,e.ky*dt,e.r*.6);e.kx*=.85;e.ky*=.85;
     const dx=P.x-e.x,dy=P.y-e.y,dist=Math.hypot(dx,dy)||1;
     if(e.ranged){if(dist>210){mv(e,dx/dist*e.spd*dt,dy/dist*e.spd*dt,e.r*.6)}else if(dist<115){mv(e,-dx/dist*e.spd*.85*dt,-dy/dist*e.spd*.85*dt,e.r*.6)}e.shot-=dt;if(dist<300&&dist>75&&e.shot<=0){e.shot=e.t==='mage'?1.65:1.9;const v=e.t==='mage'?205:245,aim=Math.atan2(dy,dx);HR.push({x:e.x,y:e.y,vx:Math.cos(aim)*v,vy:Math.sin(aim)*v,t:0,d:e.atk*(e.t==='mage'?1.05:.8),e:e.t==='mage'?'🟣':'🏹',c:e.t==='mage'?'#bd74ff':'#ffb347'})}}
     else if(dist<(e.boss?240:130)||e.hit){const s=e.spd*dt;mv(e,dx/dist*s,dy/dist*s,e.r*.6)}
