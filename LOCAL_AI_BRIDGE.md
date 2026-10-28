@@ -1,6 +1,6 @@
 # Zenia local AI bridge (implementation status)
 
-This branch adds the **web-side contract** for connecting the existing Zenia Quest Companion game to an Android-native, on-device model runner. The original game UI and gameplay are intentionally kept intact.
+This branch now contains the web-side contract plus an initial Android-native loader project for connecting the existing Zenia Quest Companion game to a local model runner. The original game UI and gameplay are intentionally kept intact.
 
 ## What changed
 
@@ -10,7 +10,7 @@ This branch adds the **web-side contract** for connecting the existing Zenia Que
 - A minimum 10-second interval is enforced and only one inference request is in flight at a time.
 - There are no canned/fallback companion lines. If the native bridge is absent, no AI bubble appears and gameplay continues normally without network requests.
 
-## Native Android bridge contract
+## Android loader prototype\n\nThe new `android-loader/` folder contains a minimal Android Studio project, a WebView wrapper that bundles the existing HTML, a local GGUF picker using Android's Storage Access Framework, and a JNI bridge linked to llama.cpp (pinned to `b4510`). The selected model is accessed through an open file descriptor rather than being copied into app storage. The Android manifest has no `INTERNET` permission. See `android-loader/README.md` for build instructions and prototype limitations.\n\n## Native Android bridge contract
 
 The Android WebView host must expose a JavaScript interface named `ZeniaNativeAI` with a method equivalent to:
 
@@ -38,4 +38,4 @@ For example, the native host can call `evaluateJavascript` with JSON-safe argume
 
 ## Important status
 
-This branch implements the HTML-to-native **interface only**. It does **not** yet contain the Android app wrapper, JNI/native inference backend, APK, or a verified Gemma 3 1B runtime. Until those pieces are built and tested, AI comments will only appear when a compatible native host is present; the standalone HTML game still works as before.
+This branch now includes an initial Android app wrapper and JNI inference path, but it is still a **prototype, not a verified build**. No APK has been built or tested on the user's phone yet. The exact Gemma 3 1B GGUF tokenizer/runtime compatibility and file-provider mmap behavior still need on-device verification. The standalone HTML game remains usable as before; AI comments require the Android wrapper and a successfully loaded local model.
