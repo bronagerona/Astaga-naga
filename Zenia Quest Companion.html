@@ -213,6 +213,7 @@ const ZeniaAI = (() => {
       instruction: 'Beri satu komentar pendek dalam bahasa Indonesia sebagai companion game yang hangat dan spontan. Maksimal 18 kata. Jangan mengarang aksi yang tidak ada di konteks.'
     };
     pending.set(id, true);
+    setTimeout(() => pending.delete(id), 90000);
     try { host.requestComment(JSON.stringify(payload)); }
     catch (err) { pending.delete(id); }
   }
