@@ -190,7 +190,7 @@ $('#b-snd').onclick=()=>{S.snd=S.snd?0:1;$('#b-snd').textContent=S.snd?'ðŸ”Š':'ð
 const ZeniaAI = (() => {
   let nextId = 1, lastRequestAt = 0;
   const pending = new Map();
-  const clean = value => String(value == null ? '' : value).replace(/[\\r\\n]+/g, ' ').trim().slice(0, 220);
+  const clean = value => String(value == null ? '' : value).replace(/[\r\n]+/g, ' ').trim().slice(0, 220);
   function event(kind, extra) {
     const host = window.ZeniaNativeAI;
     if (!host || typeof host.requestComment !== 'function') return;
