@@ -184,8 +184,8 @@ let tt=0;function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('
 let paused=false;
 function say(n,t,ch){$('#dn').textContent=n;$('#dt').textContent=t;const c=$('#dc');c.innerHTML='';(ch||[{t:'OK'}]).forEach(o=>{const b=document.createElement('button');b.className='bt'+(o.g?' g':'');b.textContent=o.t;if(o.d)b.disabled=true;b.onclick=()=>{$('#dlg').classList.remove('on');paused=false;if(o.f)o.f()};c.appendChild(b)});$('#dlg').classList.add('on');paused=true}
 function hudQ(){const q=QD[S.qi];$('#qt').textContent=!q?'🏆 Semua misi selesai':S.qs===0?'📜 Temui Kepala Desa':S.qs===2?'✅ Lapor ke Kepala Desa':'📜 '+q.t+': '+S.qp+'/'+q.goal}
-function hud(){const d=ds();$('#lv').textContent=S.lv;$('#cls').textContent=CLS[S.cls];$('#hp').style.width=(S.hp/d.maxhp*100)+'%';$('#hpt').textContent=Math.ceil(S.hp)+'/'+d.maxhp;$('#mp').style.width=(S.mp/d.maxmp*100)+'%';$('#xpb').style.width=(S.lv>=100?100:S.xp/need(S.lv)*100)+'%';$('#gold').textContent='🪙 '+S.gold;$('#npot').textContent=S.pot;$('#b-pot').style.opacity=S.pot?1:.4;$('#b-snd').textContent=S.snd?'🔊':'🔇'}
-function gainXp(n){if(S.lv>=100)return;S.xp+=n;let up=0;while(S.lv<100&&S.xp>=need(S.lv)){S.xp-=need(S.lv);S.lv++;S.pts+=3;up++}
+function hud(){const d=ds();$('#lv').textContent=S.lv;$('#cls').textContent=CLS[S.cls];$('#hp').style.width=(S.hp/d.maxhp*100)+'%';$('#hpt').textContent=Math.ceil(S.hp)+'/'+d.maxhp;$('#mp').style.width=(S.mp/d.maxmp*100)+'%';$('#xpb').style.width=(S.xp/need(S.lv)*100)+'%';$('#gold').textContent='🪙 '+S.gold;$('#npot').textContent=S.pot;$('#b-pot').style.opacity=S.pot?1:.4;$('#b-snd').textContent=S.snd?'🔊':'🔇'}
+function gainXp(n){S.xp+=n;let up=0;while(S.xp>=need(S.lv)){S.xp-=need(S.lv);S.lv++;S.pts+=3;up++}
   if(up){const d=ds();S.hp=d.maxhp;S.mp=d.maxmp;sfx.lvl();toast('⭐ Naik ke Level '+S.lv+'! +'+up*3+' poin stat');FX.push({k:'ring',x:P.x,y:P.y,t:0,r:50,c:'#ffd75e'})}}
 function menu(){if(paused&&!$('#menu').classList.contains('on'))return;const o=$('#menu');if(o.classList.contains('on')){o.classList.remove('on');paused=false;return}paused=true;o.classList.add('on');mrender()}
 let rq=0;
