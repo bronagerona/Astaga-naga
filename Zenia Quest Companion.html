@@ -37,6 +37,9 @@ canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
 @keyframes pl{to{transform:scale(1.12)}}
 #toast{position:fixed;left:50%;top:calc(76px + env(safe-area-inset-top,0px));transform:translateX(-50%);background:rgba(0,0,0,.75);color:#fff;border-radius:99px;padding:5px 16px;font-weight:700;font-size:14px;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap;max-width:94vw;overflow:hidden;text-overflow:ellipsis}
 #toast.on{opacity:1}
+#aiLoader{position:fixed;top:calc(80px + env(safe-area-inset-top,0px));right:10px;z-index:8;display:flex;flex-direction:column;align-items:flex-end;gap:3px;max-width:180px;pointer-events:auto}
+#aiLoad{font:700 12px "Baloo 2","Trebuchet MS",sans-serif;border:1px solid rgba(255,255,255,.45);border-radius:99px;padding:5px 10px;background:rgba(31,36,72,.94);color:#fff;box-shadow:0 2px 7px #0005;cursor:pointer;touch-action:manipulation}
+#aiState{font-size:10px;color:#fff;text-shadow:0 1px 2px #000;background:rgba(0,0,0,.5);border-radius:8px;padding:2px 6px;max-width:100%;text-align:right}
 .ov{position:fixed;inset:0;display:none;align-items:flex-end;justify-content:center;background:rgba(5,8,25,.5);padding:12px;z-index:20}
 .ov.on{display:flex}
 #menu{align-items:center}
@@ -64,6 +67,7 @@ canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
 <div id="joy"><i id="knob"></i></div>
 <div id="btns"><button id="b-it" aria-label="Aksi">💬</button><button id="b-pot" aria-label="Ramuan">🧪<small id="npot">0</small></button></div>
 <div id="toast"></div>
+<div id="aiLoader"><button id="aiLoad" type="button">🤖 Muat AI lokal</button><span id="aiState">Gemma belum dimuat</span></div>
 <div class="ov" id="dlg"><div class="box"><b id="dn"></b><p id="dt"></p><div class="ch" id="dc"></div></div></div>
 <div class="ov" id="menu"><div class="box" id="mb"></div></div>
 <script>
@@ -237,6 +241,17 @@ const ZeniaAI = (() => {
   return {event,receive,show};
 })();
 window.ZeniaAI = ZeniaAI;
+window.ZeniaAI.nativeStatus = function(message, ready) {
+  const state = document.getElementById('aiState');
+  const button = document.getElementById('aiLoad');
+  if (state) state.textContent = String(message || (ready ? 'Gemma siap · lokal' : 'Gemma belum dimuat'));
+  if (button) button.textContent = ready ? '✓ Gemma aktif' : '🤖 Muat AI lokal';
+};
+document.getElementById('aiLoad')?.addEventListener('click', () => {
+  const host = window.ZeniaNativeAI;
+  if (host && typeof host.pickModel === 'function') host.pickModel();
+  else window.ZeniaAI.nativeStatus('Buka game lewat aplikasi Zenia Local AI', false);
+});
 function drawZeniaBubble(camx,camy) {
   if(!zeniaBubbleText || T0>zeniaBubbleUntil) return;
   const sx=(C.x-camx)*Z, sy=(C.y-camy)*Z-24;
