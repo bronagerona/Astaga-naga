@@ -69,6 +69,16 @@ canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
 <script>
 const $=s=>document.querySelector(s),RI=(a,b)=>a+Math.floor(Math.random()*(b-a+1)),RR=(a,b)=>a+Math.random()*(b-a),cl=(v,a,b)=>Math.max(a,Math.min(b,v)),pk=a=>a[Math.floor(Math.random()*a.length)];
 const TS=36,KEY='zeniaquest';
+let aiComment='',aiCommentUntil=0,aiLastRequest=0;
+function requestZeniaComment(event,monster){
+  if(!window.ReactNativeWebView||!window.ReactNativeWebView.postMessage)return;
+  const now=performance.now();
+  if(event!=='boss'&&now-aiLastRequest<9000)return;
+  aiLastRequest=now;
+  const d=ds(),nearby=E.filter(e=>Math.hypot(e.x-P.x,e.y-P.y)<180);
+  window.ReactNativeWebView.postMessage(JSON.stringify({type:'zenia_comment_request',event:event,monster:String(monster||''),context:{map:M&&M.kind||S.map,level:S.lv,hp:Math.round(S.hp),maxHp:d.maxhp,hpPercent:Math.round(S.hp/d.maxhp*100),companion:'serigala',nearby:nearby.length,boss:nearby.some(e=>e.boss),quest:QD[S.qi]&&QD[S.qi].t||''}}));
+}
+window.ZeniaLocalAI={receiveComment:function(text){aiComment=String(text||'').replace(/[\\r\\n]+/g,' ').trim().slice(0,100);aiCommentUntil=performance.now()+6500;}};
 const CLS=['Pemanah'],CE=['🏹'];
 const MT={slime:{n:'Slime',e:'🟢',hp:30,atk:5,spd:26,xp:8,g:4,r:11},bat:{n:'Kelelawar',e:'🦇',hp:22,atk:7,spd:58,xp:10,g:5,r:9},goblin:{n:'Goblin',e:'👺',hp:55,atk:10,spd:40,xp:18,g:9,r:12},skel:{n:'Kerangka',e:'💀',hp:80,atk:14,spd:36,xp:28,g:14,r:12},archer:{n:'Pemanah Goblin',e:'🏹',hp:68,atk:13,spd:31,xp:25,g:12,r:12,ranged:1},mage:{n:'Penyihir Kegelapan',e:'🧙‍♂️',hp:76,atk:17,spd:28,xp:34,g:16,r:12,ranged:1},boss:{n:'Raja Goblin',e:'🐲',hp:900,atk:26,spd:44,xp:300,g:200,r:22},wolf:{n:'Serigala Hutan',e:'🐺',hp:115,atk:19,spd:68,xp:42,g:20,r:13},treant:{n:'Treant',e:'🌳',hp:210,atk:25,spd:22,xp:55,g:26,r:17},panther:{n:'Macan Bayangan',e:'🐆',hp:135,atk:29,spd:82,xp:58,g:28,r:12},shaman:{n:'Dukun Hutan',e:'🧝',hp:125,atk:27,spd:30,xp:62,g:30,r:12,ranged:1},thorn:{n:'Pemanah Duri',e:'🏹',hp:150,atk:24,spd:35,xp:60,g:29,r:12,ranged:1}};
 const QD=[
@@ -164,7 +174,7 @@ function setMap(name,fromPortal){
   render();hudQ()}
 const mtypes=()=>M&&M.kind==='forest'?['wolf','treant','panther','shaman','thorn']:S.lv<3?['slime','bat','goblin','archer']:S.lv<6?['slime','bat','goblin','skel','archer','mage']:['slime','bat','goblin','skel','archer','mage'];
 function spawn(t,x,y,raid=false){const b=MT[t],L=t==='boss'?S.lv+3:Math.max(1,S.lv+RI(-2,3)),h=b.hp*2.05*(1+.28*(L-1));
-  E.push({t,n:b.n,lv:L,e:b.e,x,y,r:b.r,hp:h,max:h,atk:b.atk*1.75*(1+.2*(L-1)),spd:b.spd*1.25,xp:b.xp*(1+.1*(L-1)),g:b.g,cd:RR(0,1),kx:0,ky:0,slow:0,poison:0,poisonD:0,poisonTick:0,wt:0,wx:0,wy:0,boss:t==='boss',raid,ranged:!!b.ranged,shot:RR(.7,1.8),tele:0,sw:5,fl:0})}
+  E.push({t,n:b.n,lv:L,e:b.e,x,y,r:b.r,hp:h,max:h,atk:b.atk*1.75*(1+.2*(L-1)),spd:b.spd*1.25,xp:b.xp*(1+.1*(L-1)),g:b.g,cd:RR(0,1),kx:0,ky:0,slow:0,poison:0,poisonD:0,poisonTick:0,wt:0,wx:0,wy:0,boss:t==='boss',raid,ranged:!!b.ranged,shot:RR(.7,1.8),tele:0,sw:5,fl:0});if(t==='boss')requestZeniaComment('boss',b.n)}
 function spawnTownRaid(){if(!S.raidActive||M.kind!=='town'||E.some(e=>e.raid))return;const types=['goblin','skel','archer','mage'];[[6.5,6.5],[10,5.5],[17,6.5],[20,9.5],[7,13.5],[18,14]].forEach(([x,y],i)=>spawn(types[i%types.length],x*TS,y*TS,true));spawn('boss',13.5*TS,8*TS,true);toast('🚨 Desa diserang! Kalahkan semua monster dan bos!')}
 function startTownRaid(){if(S.raidActive||S.raidClaim||S.lv<S.raidNext)return;S.raidLevel=S.raidNext;S.raidNext+=10;S.raidActive=true;toast('🚨 Quest otomatis: Selamatkan Desa!');if(M&&M.kind==='town')spawnTownRaid();save();hudQ()}
 function finishTownRaid(){S.raidActive=false;S.raidClaim=true;S.raidDoneLevel=S.raidLevel;toast('🏆 Desa berhasil diselamatkan! Temui Kepala Desa untuk hadiah spesial.');save();hudQ()}
@@ -240,7 +250,7 @@ function interact(){if(paused)return;const n=near();if(!n)return;sfx.swing();
 /* aksi tempur */
 function dmgE(e,d,crit,sourceX=P.x,sourceY=P.y){e.hp-=d;e.fl=.12;e.kx+=(e.x-sourceX)/(Math.hypot(e.x-sourceX,e.y-sourceY)||1)*(e.boss?40:140);e.ky+=(e.y-sourceY)/(Math.hypot(e.x-sourceX,e.y-sourceY)||1)*(e.boss?40:140);e.hit=1;
   FX.push({k:'num',x:e.x+RI(-6,6),y:e.y-14,t:0,s:String(Math.round(d)),c:crit?'#ffd24a':'#fff'});sfx.hit();if(e.hp<=0)kill(e)}
-function kill(e){E.splice(E.indexOf(e),1);const q=QD[S.qi];gainXp(Math.round(e.xp));
+function kill(e){requestZeniaComment(e.boss?'boss_defeated':'kill',e.n);E.splice(E.indexOf(e),1);const q=QD[S.qi];gainXp(Math.round(e.xp));
   for(let i=0;i<RI(1,3);i++)D.push({k:'g',x:e.x+RI(-12,12),y:e.y+RI(-12,12),v:Math.max(1,Math.round(e.g*RR(.7,1.4)*(e.boss?1:1))),t:0});
   if(Math.random()<.18)D.push({k:'p',x:e.x,y:e.y,t:0});
   if(e.boss){for(let i=0;i<2;i++)D.push({k:'i',x:e.x+RI(-20,20),y:e.y+RI(-20,20),t:0,it:genItem(e.lv,2)})}else if(Math.random()<.22)D.push({k:'i',x:e.x,y:e.y,t:0,it:genItem(e.lv,0)});
@@ -252,7 +262,7 @@ function skill(target){if(paused||P.sc>0||!target)return;P.sc=9;P.storm=3;P.stor
 function potion(){if(paused)return;const d=ds();if(S.hp<d.maxhp&&S.pot>0){S.pot--;S.hp=Math.min(d.maxhp,S.hp+d.maxhp*.45);sfx.pick();FX.push({k:'num',x:P.x,y:P.y-18,t:0,s:'+HP',c:'#6dff9f'})}
   else if(S.mp<d.maxmp&&S.eth>0){S.eth--;S.mp=Math.min(d.maxmp,S.mp+d.maxmp*.5);sfx.pick();FX.push({k:'num',x:P.x,y:P.y-18,t:0,s:'+MP',c:'#7fc1ff'})}
   else toast('Tidak ada yang perlu dipulihkan')}
-function hurt(a,srcx,srcy){if(P.inv>0)return;const d=Math.max(1,Math.round(a*RR(.85,1.15)*100/(100+ds().def)));S.hp-=d;P.inv=.7;sfx.hurt();FX.push({k:'num',x:P.x,y:P.y-18,t:0,s:'-'+d,c:'#ff6d7a'});
+function hurt(a,srcx,srcy){if(P.inv>0)return;const d=Math.max(1,Math.round(a*RR(.85,1.15)*100/(100+ds().def)));S.hp-=d;P.inv=.7;sfx.hurt();FX.push({k:'num',x:P.x,y:P.y-18,t:0,s:'-'+d,c:'#ff6d7a'});requestZeniaComment(S.hp/ds().maxhp<=.3?'low_hp':'hurt',S.hp<=0?'kritis':('HP '+Math.max(0,Math.round(S.hp))));
   const m=Math.hypot(P.x-srcx,P.y-srcy)||1;mv(P,(P.x-srcx)/m*14,(P.y-srcy)/m*14,8);
   if(S.hp<=0){S.hp=0;die()}}
 function die(){S.gold=Math.floor(S.gold*.9);const d=ds();S.hp=d.maxhp;S.mp=d.maxmp;say('💀 Kamu pingsan','Warga desa membawamu pulang. Kamu kehilangan sedikit emas.',[{t:'Lanjut',f:()=>{setMap('town');P.x=13*TS+18;P.y=11*TS;hud()}}])}
@@ -318,7 +328,7 @@ function draw(){cx.setTransform(DPR,0,0,DPR,0,0);cx.fillStyle='#0c0f1f';cx.fillR
     if(e.tele>0){cx.strokeStyle='rgba(255,60,60,'+(.4+.4*Math.sin(T0*30))+')';cx.lineWidth=3;cx.beginPath();cx.arc(e.x,e.y,96,0,6.28);cx.stroke()}
     const bw=e.r*2.2;cx.fillStyle='rgba(0,0,0,.6)';cx.fillRect(e.x-bw/2,e.y-e.r-12,bw,4);cx.fillStyle=e.boss?'#ff9a3c':'#ff5d6c';cx.fillRect(e.x-bw/2,e.y-e.r-12,bw*Math.max(0,e.hp/e.max),4);F(10);cx.strokeStyle='#000';cx.lineWidth=3;const tx=e.n+' Lv'+e.lv;cx.fillStyle=e.lv>S.lv+1?'#ff8a8a':e.lv>S.lv?'#ffd27a':'#fff';cx.strokeText(tx,e.x,e.y-e.r-20);cx.fillText(tx,e.x,e.y-e.r-20)}}));
   D.forEach(o=>L.push({y:o.y-5,f:()=>{if(o.k==='i'){cx.fillStyle=RC[o.it.r]+'99';cx.beginPath();cx.arc(o.x,o.y,12,0,6.28);cx.fill()}F(16);cx.fillText(o.k==='i'?o.it.e:o.k==='g'?'🪙':o.k==='p'?'🧪':'🦷',o.x,o.y+Math.sin(T0*6+o.x)*2)}}));
-  L.push({y:C.y,f:()=>{sh(C.x,C.y,8);F(TS*.72);cx.save();cx.translate(C.x,C.y-4-Math.abs(Math.sin(C.walk))*1.5);cx.scale(C.face,1);cx.fillText('🐺',0,0);cx.restore()}});
+  L.push({y:C.y,f:()=>{sh(C.x,C.y,8);F(TS*.72);cx.save();cx.translate(C.x,C.y-4-Math.abs(Math.sin(C.walk))*1.5);cx.scale(C.face,1);cx.fillText('🐺',0,0);cx.restore();if(aiComment&&performance.now()<aiCommentUntil){F(11);const txt=aiComment.length>76?aiComment.slice(0,73)+'…':aiComment,bw=Math.min(220,cx.measureText(txt).width+14),bh=25,bx=C.x-bw/2,by=C.y-45;cx.fillStyle='#fff8dc';cx.strokeStyle='#44367c';cx.lineWidth=1.5;cx.beginPath();cx.roundRect(bx,by,bw,bh,7);cx.fill();cx.stroke();cx.beginPath();cx.moveTo(C.x-4,by+bh);cx.lineTo(C.x+3,by+bh);cx.lineTo(C.x,by+bh+6);cx.closePath();cx.fill();cx.stroke();cx.fillStyle='#272143';cx.textAlign='center';cx.textBaseline='middle';cx.fillText(txt,C.x,by+bh/2)}});
   L.push({y:P.y,f:()=>{sh(P.x,P.y,10);if(P.inv>0&&Math.floor(T0*20)%2)cx.globalAlpha=.4;F(TS*.95);cx.save();cx.translate(P.x,P.y-5-Math.abs(Math.sin(P.walk))*2);cx.scale(P.face,1);cx.fillText(CE[0],0,0);cx.restore();cx.globalAlpha=1}});
   L.sort((a,b)=>a.y-b.y).forEach(o=>o.f());
   AR.forEach(a=>{const an=Math.atan2(a.vy,a.vx);cx.save();cx.translate(a.x,a.y);cx.rotate(an);cx.strokeStyle=a.elem==='fire'?'#ff6845':a.elem==='ice'?'#7de8ff':a.elem==='poison'?'#9cfa68':a.cr?'#ffd24a':'#fff';cx.lineWidth=2.5;cx.beginPath();cx.moveTo(-9,0);cx.lineTo(7,0);cx.stroke();cx.fillStyle=cx.strokeStyle;cx.beginPath();cx.moveTo(10,0);cx.lineTo(5,-3.5);cx.lineTo(5,3.5);cx.fill();cx.restore()});
