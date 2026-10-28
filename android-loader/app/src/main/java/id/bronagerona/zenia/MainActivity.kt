@@ -4,7 +4,8 @@ import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.os.ParcelFileDescriptor
+import java.io.File
+import java.io.FileOutputStream
 import android.view.Gravity
 import android.view.View
 import android.webkit.JavascriptInterface
@@ -23,7 +24,7 @@ class MainActivity : Activity() {
     private val worker = Executors.newSingleThreadExecutor()
     private lateinit var web: WebView
     private lateinit var status: TextView
-    private var modelFd: ParcelFileDescriptor? = null
+    private var modelFile: File? = null
     @Volatile private var modelReady = false
 
     external fun nativeLoadModel(path: String): String
@@ -95,31 +96,40 @@ class MainActivity : Activity() {
         try {
             contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
         } catch (_: Exception) { /* Some document providers do not offer persistable grants. */ }
-        setStatus("Membuka model lokal… jangan tutup aplikasi", false)
+        setStatus("Menyalin model ke cache lokal… jangan tutup aplikasi", false)
         worker.execute {
             modelReady = false
             try { nativeUnloadModel() } catch (_: Exception) {}
-            try { modelFd?.close() } catch (_: Exception) {}
-            modelFd = null
-            var candidate: ParcelFileDescriptor? = null
+            modelFile?.delete()
+            modelFile = null
+            var candidate: File? = null
             try {
-                candidate = contentResolver.openFileDescriptor(uri, "r")
-                    ?: throw IllegalStateException("Provider tidak memberikan file descriptor.")
-                val error = nativeLoadModel("/proc/self/fd/${candidate.fd}")
+                candidate = File.createTempFile("zenia-model-", ".gguf", cacheDir)
+                val input = contentResolver.openInputStream(uri)
+                    ?: throw IllegalStateException("Android tidak bisa membaca file yang dipilih.")
+                input.use { source ->
+                    FileOutputStream(candidate!!).use { destination -> source.copyTo(destination) }
+                }
+                if (candidate!!.length() == 0L) {
+                    throw IllegalStateException("File model kosong.")
+                }
+                val modelSizeMb = candidate!!.length() / (1024 * 1024)
+                runOnUiThread { setStatus("Memuat model (${modelSizeMb} MB)…", false) }
+                val error = nativeLoadModel(candidate!!.absolutePath)
                 if (error.isNotEmpty()) {
-                    candidate.close()
+                    candidate!!.delete()
                     runOnUiThread { setStatus(error, false) }
                     return@execute
                 }
-                val old = modelFd
-                modelFd = candidate
+                modelFile = candidate
                 candidate = null
                 modelReady = true
-                old?.close()
                 runOnUiThread { setStatus("Gemma siap · komentar lokal aktif", true) }
             } catch (e: Exception) {
-                candidate?.close()
-                runOnUiThread { setStatus("Gagal memuat file: ${e.message ?: "provider tidak kompatibel"}", false) }
+                candidate?.delete()
+                runOnUiThread {
+                    setStatus("Gagal memuat model: ${e.message ?: "file tidak terbaca"}", false)
+                }
             }
         }
     }
@@ -189,8 +199,8 @@ class MainActivity : Activity() {
         modelReady = false
         worker.execute {
             try { nativeUnloadModel() } catch (_: Exception) {}
-            try { modelFd?.close() } catch (_: Exception) {}
-            modelFd = null
+            modelFile?.delete()
+            modelFile = null
         }
         worker.shutdown()
         web.removeJavascriptInterface("ZeniaNativeAI")
