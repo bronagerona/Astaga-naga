@@ -14,7 +14,7 @@ static std::mutex g_mutex;
 
 static void unload_locked() {
     if (g_ctx) { llama_free(g_ctx); g_ctx = nullptr; }
-    if (g_model) { llama_free_model(g_model); g_model = nullptr; }
+    if (g_model) { llama_model_free(g_model); g_model = nullptr; }
     g_vocab = nullptr;
 }
 static std::string jstr(JNIEnv *env, jstring s) {
@@ -31,8 +31,8 @@ Java_id_bronagerona_zenia_MainActivity_nativeLoadModel(JNIEnv *env, jobject, jst
     const std::string path = jstr(env, jpath);
     llama_backend_init();
     llama_model_params mp = llama_model_default_params();
-    mp.use_mmap = true;
-    g_model = llama_load_model_from_file(path.c_str(), mp);
+    mp.load_mode = LLAMA_LOAD_MODE_MMAP;
+    g_model = llama_model_load_from_file(path.c_str(), mp);
     if (!g_model) {
         LOGE("Could not load GGUF path: %s", path.c_str());
         return env->NewStringUTF("Model gagal dibuka. Pilih file GGUF lokal yang bisa diakses langsung.");
@@ -42,7 +42,8 @@ Java_id_bronagerona_zenia_MainActivity_nativeLoadModel(JNIEnv *env, jobject, jst
     cp.n_batch = 512;
     cp.n_threads = 4;
     cp.n_threads_batch = 4;
-    g_ctx = llama_new_context_with_model(g_model, cp);
+    cp.n_outputs_max = 1;
+    g_ctx = llama_init_from_model(g_model, cp);
     if (!g_ctx) {
         unload_locked();
         return env->NewStringUTF("Context inference gagal dibuat. Coba tutup aplikasi lain lalu ulangi.");
@@ -66,7 +67,7 @@ Java_id_bronagerona_zenia_MainActivity_nativeGenerate(JNIEnv *env, jobject, jstr
     }
     if (n <= 0 || n >= 1000) return env->NewStringUTF("");
     tokens.resize((size_t)n);
-    llama_kv_cache_clear(g_ctx);
+    llama_memory_clear(llama_get_memory(g_ctx), true);
     llama_batch batch = llama_batch_get_one(tokens.data(), (int32_t)tokens.size());
     if (llama_decode(g_ctx, batch) != 0) return env->NewStringUTF("");
 
@@ -81,8 +82,9 @@ Java_id_bronagerona_zenia_MainActivity_nativeGenerate(JNIEnv *env, jobject, jstr
         if (llama_vocab_is_eog(g_vocab, tok)) break;
         int32_t bytes = llama_token_to_piece(g_vocab, tok, piece.data(), (int32_t)piece.size(), 0, true);
         if (bytes > 0) out.append(piece.data(), (size_t)bytes);
-        if (out.find("<end_of_turn>") != std::string::npos) {
-            out.erase(out.find("<end_of_turn>"));
+        const auto stop = out.find("<end_of_turn>");
+        if (stop != std::string::npos) {
+            out.erase(stop);
             break;
         }
         if (out.size() > 400) break;
