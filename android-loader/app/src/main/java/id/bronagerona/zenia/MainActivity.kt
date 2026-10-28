@@ -95,7 +95,7 @@ class MainActivity : Activity() {
         try {
             contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
         } catch (_: Exception) { /* Some document providers do not offer persistable grants. */ }
-        setStatus("Membuka model lokal… jangan tutup aplikasi")
+        setStatus("Membuka model lokal… jangan tutup aplikasi", false)
         worker.execute {
             modelReady = false
             try { nativeUnloadModel() } catch (_: Exception) {}
@@ -108,7 +108,7 @@ class MainActivity : Activity() {
                 val error = nativeLoadModel("/proc/self/fd/${candidate.fd}")
                 if (error.isNotEmpty()) {
                     candidate.close()
-                    runOnUiThread { setStatus(error) }
+                    runOnUiThread { setStatus(error, false) }
                     return@execute
                 }
                 val old = modelFd
@@ -116,19 +116,29 @@ class MainActivity : Activity() {
                 candidate = null
                 modelReady = true
                 old?.close()
-                runOnUiThread { setStatus("Gemma siap · komentar lokal aktif") }
+                runOnUiThread { setStatus("Gemma siap · komentar lokal aktif", true) }
             } catch (e: Exception) {
                 candidate?.close()
-                runOnUiThread { setStatus("Gagal memuat file: ${e.message ?: "provider tidak kompatibel"}") }
+                runOnUiThread { setStatus("Gagal memuat file: ${e.message ?: "provider tidak kompatibel"}", false) }
             }
         }
     }
 
-    private fun setStatus(message: String) {
+    private fun setStatus(message: String, ready: Boolean = modelReady) {
         if (::status.isInitialized) status.text = message
+        if (::web.isInitialized) {
+            val js = "window.ZeniaAI&&window.ZeniaAI.nativeStatus(" +
+                JSONObject.quote(message) + "," + ready + ");"
+            web.evaluateJavascript(js, null)
+        }
     }
 
     private inner class GameBridge {
+        @JavascriptInterface
+        fun pickModel() {
+            runOnUiThread { chooseModel() }
+        }
+
         @JavascriptInterface
         fun requestComment(payloadJson: String) {
             if (!modelReady) return
