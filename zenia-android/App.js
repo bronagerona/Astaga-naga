@@ -66,6 +66,7 @@ export default function App() {
     try{
       setStatus('Pilih file Gemma 3 1B GGUF…');
       const model=await chooseLocalModel();
+      if(ctxRef.current&&ctxRef.current.release){const old=ctxRef.current;ctxRef.current=null;try{await old.release()}catch(_){}}
       setStatus('Memuat dan mengetes model lokal…');
       const context=await createTestedContext(model);
       if(ctxRef.current&&ctxRef.current.release){try{await ctxRef.current.release()}catch(_){}}
