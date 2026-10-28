@@ -141,7 +141,7 @@ function setMap(name,fromPortal){
     if(S.qi===2&&S.qs>=1){const r=rooms[rooms.length-1];spawn('boss',(r.x+r.w/2)*TS,(r.y+r.h/2)*TS)}
     M.cnt=E.filter(e=>!e.boss).length;
   }
-  if(fromPortal){P.x=S.x;P.y=S.y}
+  if(fromPortal){P.x=S.x;P.y=S.y;C.x=P.x-18;C.y=P.y+12;C.ac=0;C.walk=0}
   render();hudQ()}
 const mtypes=()=>S.lv<3?['slime','bat']:S.lv<6?['slime','bat','goblin']:['slime','bat','goblin','skel'];
 function spawn(t,x,y){const b=MT[t],L=t==='boss'?S.lv+3:Math.max(1,S.lv+RI(-2,3)),h=b.hp*(1+.22*(L-1));
@@ -250,10 +250,23 @@ function update(dt){T0+=dt;const d=ds();
   if(P.ac>0)P.ac-=dt;if(C.ac>0)C.ac-=dt;if(P.sc>0)P.sc-=dt;if(P.inv>0)P.inv-=dt;if(P.sw>0)P.sw-=dt;
   let ax=jx+((K.d||K.arrowright)?1:0)-((K.a||K.arrowleft)?1:0),ay=jy+((K.s||K.arrowdown)?1:0)-((K.w||K.arrowup)?1:0);const m=Math.hypot(ax,ay);
   if(m>.05){const n=Math.min(1,m);ax=ax/m*n;ay=ay/m*n;mv(P,ax*d.spd*dt,ay*d.spd*dt,8);P.walk+=dt*10;P.dir=Math.atan2(ay,ax);if(Math.abs(ax)>.2)P.face=ax>0?1:-1}
-  // Companion mengikuti Player dan otomatis menyerang monster di dekatnya.
+  // Companion langsung ikut saat pindah map, mengejar target hanya di sekitar Player, lalu kembali menempel.
+  const cs=companionStats();
   const cdx=P.x-C.x,cdy=P.y-C.y,cdist=Math.hypot(cdx,cdy)||1;
-    if(cdist>13){const cs=companionStats().spd;mv(C,cdx/cdist*Math.min(cdist-10,cs*dt),cdy/cdist*Math.min(cdist-10,cs*dt),7);C.walk+=dt*9;if(Math.abs(cdx)>.2)C.face=cdx>0?1:-1;C.dir=Math.atan2(cdy,cdx)}
-    if(C.ac<=0&&!paused){let target=null,dist=62;E.forEach(e=>{const rr=Math.hypot(e.x-C.x,e.y-C.y);if(rr<dist){dist=rr;target=e}});if(target){const cs=companionStats();C.ac=cs.acd;const crit=Math.random()<cs.crit;dmgE(target,cs.atk*RR(.85,1.15)*(crit?1.6:1),crit,C.x,C.y);FX.push({k:'sl',x:C.x,y:C.y,a:Math.atan2(target.y-C.y,target.x-C.x),t:0})}}
+  let target=null,targetDist=Infinity;
+  E.forEach(e=>{const dp=Math.hypot(e.x-P.x,e.y-P.y);if(dp<100&&dp<targetDist){targetDist=dp;target=e}});
+  let tx=P.x-P.face*20,ty=P.y+14;
+  if(target){
+    const dx=target.x-P.x,dy=target.y-P.y,dp=Math.hypot(dx,dy)||1;
+    // Posisi serang dibatasi maksimal 70 px dari Player agar Companion tidak kabur jauh.
+    tx=target.x-dx/dp*22;ty=target.y-dy/dp*22;
+    const ox=tx-P.x,oy=ty-P.y,od=Math.hypot(ox,oy);
+    if(od>70){tx=P.x+ox/od*70;ty=P.y+oy/od*70}
+  }
+  const tdx=tx-C.x,tdy=ty-C.y,tdist=Math.hypot(tdx,tdy);
+  if(tdist>5){mv(C,tdx/tdist*Math.min(tdist,cs.spd*dt),tdy/tdist*Math.min(tdist,cs.spd*dt),7);C.walk+=dt*9;if(Math.abs(tdx)>.2)C.face=tdx>0?1:-1;C.dir=Math.atan2(tdy,tdx)}
+  // Serang hanya monster yang dekat Companion dan masih dalam radius Player.
+  if(C.ac<=0&&!paused){let victim=null,dist=62;E.forEach(e=>{const dp=Math.hypot(e.x-P.x,e.y-P.y),rr=Math.hypot(e.x-C.x,e.y-C.y);if(dp<100&&rr<dist){dist=rr;victim=e}});if(victim){C.ac=cs.acd;const crit=Math.random()<cs.crit;dmgE(victim,cs.atk*RR(.85,1.15)*(crit?1.6:1),crit,C.x,C.y);FX.push({k:'sl',x:C.x,y:C.y,a:Math.atan2(victim.y-C.y,victim.x-C.x),t:0})}}
   if(atkHold||K.j||K[' '])attack();
   if(S.mp<d.maxmp)S.mp=Math.min(d.maxmp,S.mp+dt*(1.2+S.st.int*.15));
   if(S.hp<d.maxhp&&M.kind==='town')S.hp=Math.min(d.maxhp,S.hp+dt*4);
