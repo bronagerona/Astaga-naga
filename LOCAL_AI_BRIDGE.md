@@ -5,10 +5,10 @@ This branch adds the **web-side contract** for connecting the existing Zenia Que
 ## What changed
 
 - `Zenia Quest Companion.html` now exposes `window.ZeniaAI`.
-- Meaningful game events request a short Indonesian companion comment: level-up, enemy/boss defeat, and critically low HP.
-- Requests are throttled and only one request is in flight at a time.
-- The existing toast UI displays a native model response; no new game UI was added.
-- If the native bridge is absent, the game continues normally without making network requests.
+- Meaningful game events send context for short Indonesian companion comments: level-up, nearby enemies, enemy/boss defeat, critically low HP, and ambient village/exploration moments.
+- The game renders a Sims-style speech bubble beside the companion; bubble text is shown only after it receives the model's generated response.
+- A minimum 10-second interval is enforced and only one inference request is in flight at a time.
+- There are no canned/fallback companion lines. If the native bridge is absent, no AI bubble appears and gameplay continues normally without network requests.
 
 ## Native Android bridge contract
 
