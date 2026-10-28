@@ -14,7 +14,7 @@ static std::mutex g_mutex;
 
 static void unload_locked() {
     if (g_ctx) { llama_free(g_ctx); g_ctx = nullptr; }
-    if (g_model) { llama_model_free(g_model); g_model = nullptr; }
+    if (g_model) { llama_free_model(g_model); g_model = nullptr; }
     g_vocab = nullptr;
 }
 static std::string jstr(JNIEnv *env, jstring s) {
